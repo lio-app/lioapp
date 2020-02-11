@@ -1096,6 +1096,7 @@ class UserApiController extends Controller
                             'amount' => $value['amount'],
                             'txid' => $value['txid'],
                             'time' => $value['time'],
+                            'network' => 'LIO',
                         ];
 
                         array_push($history, $history_tmp);
@@ -1118,6 +1119,7 @@ class UserApiController extends Controller
                             'amount' => $value['amount'],
                             'txid' => $value['txid'],
                             'time' => $value['time'],
+                            'network' => 'BTC',
                         ];
 
                         array_push($history, $history_tmp);
@@ -1152,6 +1154,7 @@ class UserApiController extends Controller
                         'amount' => $results['value'] / 1000000000000000000,
                         'category' => $category,
                         'time' => $results['timeStamp'],
+                        'network' => 'ETH',
                         //'address' => $results['to'],
                     ];
 
@@ -1189,13 +1192,12 @@ class UserApiController extends Controller
                         'amount' => $results['value'] / 1000000000000,
                         'category' => $category,
                         'time' => $results['timeStamp'],
+                        'network' => 'EC',
                         //'address' => $results['to'],
                     ];
 
                     array_push($history, $history_tmp);
                 }
-
-                //dd($history);
 
                 $curldata['result'] = $history;
 
@@ -1239,6 +1241,7 @@ class UserApiController extends Controller
                             'amount' => $value['Amount'] / 1000000,
                             'txid' => $value['hash'],
                             'time' => $value['date'] + 946684800,
+                            'network' => 'XRP',
                         ];
 
                         array_push($history, $history_tmp);
@@ -1252,7 +1255,6 @@ class UserApiController extends Controller
             if (isset($curldata['result'])) {
                 $details = $curldata['result'];
             }
-            //dd($details);
 
             return response()->json(['details' => $details], 200);
 
