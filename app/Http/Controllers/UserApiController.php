@@ -522,8 +522,6 @@ class UserApiController extends Controller
                 $loop = $bitstampdetails['data'];
                 //----------------------- ??? ----------------
 
-                $ecpay = 150;
-
                 if ($user->network == 'BTC') {
                     $currency = "BTC";
                     $currency_value = $BTC;
@@ -535,11 +533,47 @@ class UserApiController extends Controller
                     $erc = 0;
                     $decimal = 18;
                 }
-                if ($user->network == 'EC') {
+
+                if ($user->network == 'EC') { // --------------- EcPay Token coin
                     $currency = "EC";
+                    if ($user->fiat_currency == "USD") {
+
+                        $bitstamp = $client->get('https://api.coinmarketcap.com/v2/ticker/?convert=EUR');
+
+                        $bitstampdetails = json_decode($bitstamp->getBody(), true);
+                        foreach ($bitstampdetails['data'] as $liveprice) {
+
+                            if ($liveprice['symbol'] == 'BTC') {
+                                $btc_usd_liveprice = $liveprice['quotes']['USD']['price'];
+                                $btc_eur_liveprice = $liveprice['quotes']['EUR']['price'];
+                            }
+                        }
+
+                        $one_btc_usd = 1 / $btc_usd_liveprice;
+                        $ecpay = $one_btc_usd * $btc_eur_liveprice;
+
+                    } elseif ($user->fiat_currency == "EUR") {
+
+                        // $bitstamp = $client->get('https://api.coinmarketcap.com/v2/ticker/?convert=EUR');
+
+                        //  $bitstampdetails = json_decode($bitstamp->getBody(), true);
+                        //    foreach($bitstampdetails['data'] as $liveprice){
+
+                        //         if($liveprice['symbol'] == 'BTC'){
+                        //             $btc_eur_liveprice = $liveprice['quotes']['EUR']['price'];
+                        //             $btc_usd_liveprice = $liveprice['quotes']['USD']['price'];
+
+                        //         }
+                        //     }
+
+                        // $one_btc_eur = 1/$btc_eur_liveprice;
+                        // $ecpay =  $one_btc_eur * $btc_usd_liveprice;
+                        $ecpay = $curldata['result'];
+                    }
+
                     $currency_value = $ecpay;
-                    $erc = 0;
                     $decimal = 12;
+                    $erc = 0;
                     $tranfee = 1;
                 }
             } elseif ($request->network == 'XRP') { // ------------------------- XRP coin
@@ -601,7 +635,7 @@ class UserApiController extends Controller
                     $tranfee = $tranfee_temp;
                 }
 
-            } elseif ($request->network == 'LIO') { // ------------------------- LIO coin
+            } elseif ($request->network == 'LIO') { // ------------------ LIO coin
 
                 /*$currency = Setting::get('currency_symbol');
                 $currency_value = Setting::get('currency_value');*/
@@ -610,13 +644,23 @@ class UserApiController extends Controller
                 $currencies = Currency::where('currency', $fiat_currency)->first();
                 $currency = $fiat_currency;
 
-                if ($currency == 'USD') {
-                    $currency_value = $currencies['coin_value'];
-                } else {
-                    $client = new Client;
-                    $lio_usd = $client->get('https://www.euro-btc.exchange/api/v2/tickers/lioecpay');
+                $client = new Client;
+                $lio_usd = $client->get('https://www.euro-btc.exchange/api/v2/tickers/lioecpay');
 
-                    $liveprice_lio = json_decode($lio_usd->getBody(), true);
+                $liveprice_lio = json_decode($lio_usd->getBody(), true);
+
+                if ($currency == 'USD') {
+
+                    $client = new Client;
+                    $eur_usd = $client->get('https://www.freeforexapi.com/api/live?pairs=EURUSD');
+
+                    $usd_value = json_decode($lio_usd->getBody(), true);
+
+                    $usd_liveprice = $usd_value['rates']['EURUSD']['rate'];
+
+                    $currency_value = $usd_liveprice * $liveprice_lio['ticker']['last'];
+                } else {
+
                     $currency_value = $liveprice_lio['ticker']['last'];
                 }
 
