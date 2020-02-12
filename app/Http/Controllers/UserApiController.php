@@ -568,7 +568,7 @@ class UserApiController extends Controller
 
                         // $one_btc_eur = 1/$btc_eur_liveprice;
                         // $ecpay =  $one_btc_eur * $btc_usd_liveprice;
-                        $ecpay = $curldata['result'];
+                        $ecpay = 1; //$curldata['result'];
                     }
 
                     $currency_value = $ecpay;
