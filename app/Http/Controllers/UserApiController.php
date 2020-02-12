@@ -422,8 +422,10 @@ class UserApiController extends Controller
                     $user->save();
                 }
 
-            }
+	    }
 
+	   
+	    
             if ($request->network == 'BTC' || $request->network == 'ETH' || $request->network == 'EC') { // -------- BTC and ETH coin
 
                 if ($user->network == 'BTC') {
@@ -438,7 +440,8 @@ class UserApiController extends Controller
                     $curldata_address['result'] = $user->eth_address;
                 }
 
-                $address = $curldata_address['result'];
+		$address = $curldata_address['result'];
+
 
                 $param = [$name, 1];
                 $body = [
@@ -453,7 +456,7 @@ class UserApiController extends Controller
                     $coindetails = $client->get('https://api.etherscan.io/api?module=account&action=balance&address=' . $address);
                     $coindetails = json_decode($coindetails->getBody(), true);
                     $amount = $coindetails['result'] / 1000000000000000000;
-                    $curldata['result'] = $amount;
+		    $curldata['result'] = $amount;
                 }
                 if ($user->network == 'EC') {
                     $client = new Client;
@@ -486,7 +489,7 @@ class UserApiController extends Controller
                     $tranfee = $tranfee_temp;
                 }
 
-                $coin_type = array();
+		$coin_type = array();
 
                 $client = new Client;
 
@@ -512,6 +515,8 @@ class UserApiController extends Controller
                 $ETH = $coin_type['ETH'];
                 //----------------------- END ETH  ----------------
 
+
+	
                 //----------------------- ???  ----------------
                 if ($user->fiat_currency == "USD") {
                     $bitstamp = $client->get('https://api.coinmarketcap.com/v2/ticker/?convert=USD');
@@ -532,7 +537,7 @@ class UserApiController extends Controller
                     $currency_value = $ETH;
                     $erc = 0;
                     $decimal = 18;
-                }
+		}
 
                 if ($user->network == 'EC') { // --------------- EcPay Token coin
                     $currency = "EC";
@@ -635,12 +640,14 @@ class UserApiController extends Controller
                     $tranfee = $tranfee_temp;
                 }
 
-            } elseif ($request->network == 'LIO') { // ------------------ LIO coin
+	    } elseif ($request->network == 'LIO') { // ------------------ LIO coin
+
 
                 /*$currency = Setting::get('currency_symbol');
                 $currency_value = Setting::get('currency_value');*/
 
-                $fiat_currency = $user->fiat_currency;
+		    $fiat_currency = $user->fiat_currency;
+
                 $currencies = Currency::where('currency', $fiat_currency)->first();
                 $currency = $fiat_currency;
 
@@ -654,7 +661,7 @@ class UserApiController extends Controller
                     $client = new Client;
                     $eur_usd = $client->get('https://www.freeforexapi.com/api/live?pairs=EURUSD');
 
-                    $usd_value = json_decode($lio_usd->getBody(), true);
+		    $usd_value = json_decode($eur_usd->getBody(), true);
 
                     $usd_liveprice = $usd_value['rates']['EURUSD']['rate'];
 
@@ -662,7 +669,7 @@ class UserApiController extends Controller
                 } else {
 
                     $currency_value = $liveprice_lio['ticker']['last'];
-                }
+		}
 
                 /*if($currencies){
                 $currency = $fiat_currency;
