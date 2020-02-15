@@ -1144,30 +1144,30 @@ class UserApiController extends Controller
                 $coindetails = $client->get('http://api.etherscan.io/api?module=account&action=txlist&address=' . $ethaddress . '&startblock=0&endblock=99999999&sort=desc');
                 $result = json_decode($coindetails->getBody(), true);
                 // dd($result['result']);
+		 if (isset($result['result'])) {
+			$result = $result['result'];
+			// dd($result);
 
-                $result = $result['result'];
-                // dd($result);
+			foreach ($result as $index => $results) {
 
-                foreach ($result as $index => $results) {
+			    $category = "receive";
 
-                    $category = "receive";
+			    if ($results['from'] == $user->eth_address) {
+				$category = "sent";
+			    }
 
-                    if ($results['from'] == $user->eth_address) {
-                        $category = "sent";
-                    }
+			    $history_tmp = [
+				'txid' => $results['hash'],
+				'amount' => $results['value'] / 1000000000000000000,
+				'category' => $category,
+				'time' => $results['timeStamp'],
+				'network' => 'ETH',
+				//'address' => $results['to'],
+			    ];
 
-                    $history_tmp = [
-                        'txid' => $results['hash'],
-                        'amount' => $results['value'] / 1000000000000000000,
-                        'category' => $category,
-                        'time' => $results['timeStamp'],
-                        'network' => 'ETH',
-                        //'address' => $results['to'],
-                    ];
-
-                    array_push($history, $history_tmp);
-                }
-
+			    array_push($history, $history_tmp);
+			}
+		 }
                 //dd($history);
 
                 $curldata['result'] = $history;
@@ -1183,28 +1183,29 @@ class UserApiController extends Controller
                 $coindetails = $client->get('https://api.etherscan.io/api?module=account&action=tokentx&contractaddress=' . $contract_address . '&address=' . $ethaddress);
 
                 $result = json_decode($coindetails->getBody(), true);
+		 if (isset($result['result'])) {
+			$result = $result['result'];
 
-                $result = $result['result'];
+			foreach ($result as $index => $results) {
 
-                foreach ($result as $index => $results) {
+			    $category = "receive";
 
-                    $category = "receive";
+			    if ($results['from'] == $user->eth_address) {
+				$category = "sent";
+			    }
 
-                    if ($results['from'] == $user->eth_address) {
-                        $category = "sent";
-                    }
+			    $history_tmp = [
+				'txid' => $results['hash'],
+				'amount' => $results['value'] / 1000000000000,
+				'category' => $category,
+				'time' => $results['timeStamp'],
+				'network' => 'EC',
+				//'address' => $results['to'],
+			    ];
 
-                    $history_tmp = [
-                        'txid' => $results['hash'],
-                        'amount' => $results['value'] / 1000000000000,
-                        'category' => $category,
-                        'time' => $results['timeStamp'],
-                        'network' => 'EC',
-                        //'address' => $results['to'],
-                    ];
-
-                    array_push($history, $history_tmp);
-                }
+			    array_push($history, $history_tmp);
+			}
+		 }
 
                 $curldata['result'] = $history;
 
