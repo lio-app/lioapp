@@ -941,7 +941,7 @@ class UserApiController extends Controller
                         "amount" => $request->amount,
                         "url" => "https://mainnet.infura.io/YRMZb6DozOUKLJTO7hs",
                     );
-                    curl_setopt($ch, CURLOPT_URL, "http://206.189.74.156:8110");
+                    curl_setopt($ch, CURLOPT_URL, "http://localhost:8110");
                     curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
                     curl_setopt($ch, CURLOPT_POST, 1);
                     curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
