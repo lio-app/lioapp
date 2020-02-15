@@ -453,14 +453,14 @@ class UserApiController extends Controller
                 }
                 if ($user->network == 'ETH') {
                     $client = new Client;
-                    $coindetails = $client->get('https://api.etherscan.io/api?module=account&action=balance&address=' . $address);
+                    $coindetails = $client->get('https://api.etherscan.io/api?module=account&action=balance&address=' . $address.'&apikey=SRHNYU6D81WRIC2BJGQFVZKF2A67WMFQHJ');
                     $coindetails = json_decode($coindetails->getBody(), true);
                     $amount = $coindetails['result'] / 1000000000000000000;
 		    $curldata['result'] = $amount;
                 }
                 if ($user->network == 'EC') {
                     $client = new Client;
-                    $coindetails = $client->get("https://api.etherscan.io/api?module=account&action=tokenbalance&contractaddress=0x3b0D6B5F04C1A70a661F9EF32992f9e2C670ae7A&address=" . $address);
+                    $coindetails = $client->get("https://api.etherscan.io/api?module=account&action=tokenbalance&contractaddress=0x3b0D6B5F04C1A70a661F9EF32992f9e2C670ae7A&address=" . $address.'&apikey=SRHNYU6D81WRIC2BJGQFVZKF2A67WMFQHJ');
 
                     $coindetails = json_decode($coindetails->getBody(), true);
                     $amount = $coindetails['result'] / 1000000000000;
@@ -1141,7 +1141,7 @@ class UserApiController extends Controller
                 $ethaddress = $user->eth_address;
 
                 $client = new Client;
-                $coindetails = $client->get('http://api.etherscan.io/api?module=account&action=txlist&address=' . $ethaddress . '&startblock=0&endblock=99999999&sort=desc');
+                $coindetails = $client->get('http://api.etherscan.io/api?module=account&action=txlist&address=' . $ethaddress . '&startblock=0&endblock=99999999&sort=desc&apikey=SRHNYU6D81WRIC2BJGQFVZKF2A67WMFQHJ');
                 $result = json_decode($coindetails->getBody(), true);
                 // dd($result['result']);
 		 if (isset($result['result'])) {
@@ -1180,7 +1180,7 @@ class UserApiController extends Controller
                 $client = new Client;
                 // $coindetails = $client->get('http://api.etherscan.io/api?module=account&action=txlist&address=' . $ethaddress . '&startblock=0&endblock=99999999&sort=desc');
 
-                $coindetails = $client->get('https://api.etherscan.io/api?module=account&action=tokentx&contractaddress=' . $contract_address . '&address=' . $ethaddress);
+                $coindetails = $client->get('https://api.etherscan.io/api?module=account&action=tokentx&contractaddress=' . $contract_address . '&address=' . $ethaddress.'&apikey=SRHNYU6D81WRIC2BJGQFVZKF2A67WMFQHJ');
 
                 $result = json_decode($coindetails->getBody(), true);
 		 if (isset($result['result'])) {
