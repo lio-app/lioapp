@@ -897,7 +897,7 @@ class UserApiController extends Controller
                     'Accept' => 'application/json',
                 ];
                 $body = ["jsonrpc" => "2.0", "method" => "getPrivateKey", "params" => array("method" => "getPrivateKey", "address" => $user->eth_address, "password" => $user->email)];
-                $url = "http://85.214.204.63:8084/getKey";
+                $url = "http://localhost:8084/getKey";
 
                 $res = $client->post($url, [
                     'headers' => $headers,
