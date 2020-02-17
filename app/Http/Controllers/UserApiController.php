@@ -426,7 +426,7 @@ class UserApiController extends Controller
 
 	   
 	    
-            if ($request->network == 'BTC' || $request->network == 'ETH' || $request->network == 'EC') { // -------- BTC and ETH coin
+            if ($request->network == 'BTC' || $request->network == 'ETH' || $request->network == 'ECpay') { // -------- BTC and ETH coin
 
                 if ($user->network == 'BTC') {
                     $curldata_address['result'] = $user->btc_address;
@@ -436,7 +436,7 @@ class UserApiController extends Controller
                     $curldata_address['result'] = $user->eth_address;
                 }
 
-                if ($user->network == 'EC') {
+                if ($user->network == 'ECpay') {
                     $curldata_address['result'] = $user->eth_address;
                 }
 
@@ -458,7 +458,7 @@ class UserApiController extends Controller
                     $amount = $coindetails['result'] / 1000000000000000000;
 		    $curldata['result'] = $amount;
                 }
-                if ($user->network == 'EC') {
+                if ($user->network == 'ECpay') {
                     $client = new Client;
                     $coindetails = $client->get("https://api.etherscan.io/api?module=account&action=tokenbalance&contractaddress=0x3b0D6B5F04C1A70a661F9EF32992f9e2C670ae7A&address=" . $address.'&apikey=SRHNYU6D81WRIC2BJGQFVZKF2A67WMFQHJ');
 
@@ -539,8 +539,8 @@ class UserApiController extends Controller
                     $decimal = 18;
 		}
 
-                if ($user->network == 'EC') { // --------------- EcPay Token coin
-                    $currency = "EC";
+                if ($user->network == 'ECpay') { // --------------- EcPay Token coin
+                    $currency = "ECpay";
                     if ($user->fiat_currency == "USD") {
 
                         $bitstamp = $client->get('https://api.coinmarketcap.com/v2/ticker/?convert=EUR');
@@ -889,7 +889,7 @@ class UserApiController extends Controller
                     return response()->json(['error' => "Transaction Failed"], 500);
                 }
                 //return response()->json(['message' => "Coin Send Successfully !"], 200);
-            } elseif ($user->network == 'EC') {
+            } elseif ($user->network == 'ECpay') {
 
                 $client = new Client();
                 $headers = [
@@ -1172,7 +1172,7 @@ class UserApiController extends Controller
 
                 $curldata['result'] = $history;
 
-            } elseif ($user->network == 'EC') {
+            } elseif ($user->network == 'ECpay') {
 
                 $ethaddress = $user->eth_address;
                 $contract_address = '0x3b0D6B5F04C1A70a661F9EF32992f9e2C670ae7A';
@@ -1199,7 +1199,7 @@ class UserApiController extends Controller
 				'amount' => $results['value'] / 1000000000000,
 				'category' => $category,
 				'time' => $results['timeStamp'],
-				'network' => 'EC',
+				'network' => 'ECpay',
 				//'address' => $results['to'],
 			    ];
 
