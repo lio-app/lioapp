@@ -1180,7 +1180,7 @@ class UserApiController extends Controller
                 $client = new Client;
                 // $coindetails = $client->get('http://api.etherscan.io/api?module=account&action=txlist&address=' . $ethaddress . '&startblock=0&endblock=99999999&sort=desc');
 
-                $coindetails = $client->get('https://api.etherscan.io/api?module=account&action=tokentx&contractaddress=' . $contract_address . '&address=' . $ethaddress.'&apikey=SRHNYU6D81WRIC2BJGQFVZKF2A67WMFQHJ');
+                $coindetails = $client->get('https://api.etherscan.io/api?module=account&sort=desc&action=tokentx&contractaddress=' . $contract_address . '&address=' . $ethaddress.'&apikey=SRHNYU6D81WRIC2BJGQFVZKF2A67WMFQHJ');
 
                 $result = json_decode($coindetails->getBody(), true);
 		 if (isset($result['result'])) {
