@@ -1096,7 +1096,7 @@ class UserApiController extends Controller
                 if (isset($curldata['result'])) {
 
                     $details = $curldata['result'];
-
+		    $details = collect($details)->sortBy('time')->values();
                     foreach ($details as $value) {
                         $history_tmp = [
                             'category' => $value['category'],
