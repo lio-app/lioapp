@@ -1096,7 +1096,8 @@ class UserApiController extends Controller
                 if (isset($curldata['result'])) {
 
                     $details = $curldata['result'];
-		    $details = collect($details)->sortBy('time')->values();
+                    $time  = array_column($details, 'time');
+                    array_multisort($time,SORT_DESC,$details);
                     foreach ($details as $value) {
                         $history_tmp = [
                             'category' => $value['category'],
@@ -1119,7 +1120,8 @@ class UserApiController extends Controller
                 if (isset($curldata['result'])) {
 
                     $details = $curldata['result'];
-
+                    $time  = array_column($details, 'time');
+		            array_multisort($time,SORT_DESC,$details);
                     foreach ($details as $value) {
                         $history_tmp = [
                             'category' => $value['category'],
@@ -1233,17 +1235,12 @@ class UserApiController extends Controller
                 if (isset($xrp_trans['result'])) {
 
                     $details = $xrp_trans['result'];
-
                     foreach ($details['transactions'] as $valuetx) {
-
                         $value = $valuetx['tx'];
-
                         $category = "receive";
-
                         if ($value['Account'] == $user->xrp_address) {
                             $category = "sent";
                         }
-
                         $history_tmp = [
                             'category' => $category,
                             'amount' => $value['Amount'] / 1000000,
@@ -1251,12 +1248,12 @@ class UserApiController extends Controller
                             'time' => $value['date'] + 946684800,
                             'network' => 'XRP',
                         ];
-
                         array_push($history, $history_tmp);
                     }
 
-                }
-
+                }                
+                $time  = array_column($history, 'time');
+                array_multisort($time,SORT_DESC,$history);
                 $curldata['result'] = $history;
             }
 
