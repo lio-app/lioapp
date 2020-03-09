@@ -54,4 +54,10 @@ Route::group(['middleware' => ['auth:api']], function () {
     Route::post('/selectlanguage' , 'UserApiController@selectlanguage');
     Route::get('/keygen' , 'UserApiController@keygen');
 
+    Route::post('/tag/write','UserTestApiController@tagwrite');
+    Route::post('/test/sendcoin' , 'UserTestApiController@sendcoin');
+    Route::post('/test/getbalance' , 'UserTestApiController@testGetbalance');
+    //Route::post('/test/recive/transaction/mail', 'UserTestApiController@recive_mail');
 });
+
+Route::post('/test/recive/transaction/mail', 'UserTestApiController@recive_mail');

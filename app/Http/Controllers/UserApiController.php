@@ -338,10 +338,10 @@ class UserApiController extends Controller
 
             if (!isset($request['network'])) {
                 $request->network = $user->network;
+            } else {
+            	$user->network = $request->network;
+            	$user->save();
             }
-
-            $user->network = $request->network;
-            $user->save();
 
             $name = $user->email;
 
@@ -440,7 +440,7 @@ class UserApiController extends Controller
                     $curldata_address['result'] = $user->eth_address;
                 }
 
-		$address = $curldata_address['result'];
+		$address = $curldata_address['result'];   /// What is the reason ?
 
 
                 $param = [$name, 1];
@@ -450,7 +450,7 @@ class UserApiController extends Controller
                 ];
                 if ($user->network == 'BTC') {
                     $curldata = $this->bitcoin_npmcurl($body);
-                }
+		}
                 if ($user->network == 'ETH') {
                     $client = new Client;
                     $coindetails = $client->get('https://api.etherscan.io/api?module=account&action=balance&address=' . $address.'&apikey=SRHNYU6D81WRIC2BJGQFVZKF2A67WMFQHJ');
@@ -518,13 +518,13 @@ class UserApiController extends Controller
 
 	
                 //----------------------- ???  ----------------
-                if ($user->fiat_currency == "USD") {
-                    $bitstamp = $client->get('https://api.coinmarketcap.com/v2/ticker/?convert=USD');
-                } elseif ($user->fiat_currency == "EUR") {
-                    $bitstamp = $client->get('https://api.coinmarketcap.com/v2/ticker/?convert=EUR');
-                }
-                $bitstampdetails = json_decode($bitstamp->getBody(), true);
-                $loop = $bitstampdetails['data'];
+                // if ($user->fiat_currency == "USD") {
+                //     $bitstamp = $client->get('https://api.coinmarketcap.com/v2/ticker/?convert=USD');
+                // } elseif ($user->fiat_currency == "EUR") {
+                //     $bitstamp = $client->get('https://api.coinmarketcap.com/v2/ticker/?convert=EUR');
+                // }
+                // $bitstampdetails = json_decode($bitstamp->getBody(), true);
+                // $loop = 10;//$bitstampdetails['data'];
                 //----------------------- ??? ----------------
 
                 if ($user->network == 'BTC') {
@@ -543,19 +543,23 @@ class UserApiController extends Controller
                     $currency = "ECpay";
                     if ($user->fiat_currency == "USD") {
 
-                        $bitstamp = $client->get('https://api.coinmarketcap.com/v2/ticker/?convert=EUR');
+                        //$bitstamp = $client->get('https://api.coinmarketcap.com/v2/ticker/?convert=EUR');
+                        $bitstamp = $client->get('https://www.bitstamp.net/api/eur_usd/');
+
 
                         $bitstampdetails = json_decode($bitstamp->getBody(), true);
-                        foreach ($bitstampdetails['data'] as $liveprice) {
+                       // dd($bitstampdetails);
+                        // foreach ($bitstampdetails['data'] as $liveprice) {
 
-                            if ($liveprice['symbol'] == 'BTC') {
-                                $btc_usd_liveprice = $liveprice['quotes']['USD']['price'];
-                                $btc_eur_liveprice = $liveprice['quotes']['EUR']['price'];
-                            }
-                        }
+                        //     if ($liveprice['symbol'] == 'BTC') {
+                        //         $btc_usd_liveprice = $liveprice['quotes']['USD']['price'];
+                        //         $btc_eur_liveprice = $liveprice['quotes']['EUR']['price'];
+                        //     }
+                        // }
 
-                        $one_btc_usd = 1 / $btc_usd_liveprice;
-                        $ecpay = $one_btc_usd * $btc_eur_liveprice;
+                        // $one_btc_usd = 1 / $btc_usd_liveprice;
+                        // $ecpay = $one_btc_usd * $btc_eur_liveprice;
+                        $ecpay = $bitstampdetails['sell'];
 
                     } elseif ($user->fiat_currency == "EUR") {
 
@@ -737,7 +741,8 @@ class UserApiController extends Controller
             return response()->json(['coin_selected' => $coin_selected, 'address' => $address, 'coin' => $coin, 'user' => $user, 'coin_value' => $currency_value, 'currency' => $currency, 'available_final_amount' => $tranfee, 'contract' => $contract, 'erc' => $erc, 'decimal' => $decimal], 200);
 
         } catch (Exception $e) {
-            return response()->json(['error' => trans('api.something_went_wrong')], 500);
+            echo 'Message: ' .$e->getMessage();
+            return response()->json(['error' => $e->getMessage()], 500);
         }
     }
 
@@ -1146,32 +1151,31 @@ class UserApiController extends Controller
                 $coindetails = $client->get('http://api.etherscan.io/api?module=account&action=txlist&address=' . $ethaddress . '&startblock=0&endblock=99999999&sort=desc&apikey=SRHNYU6D81WRIC2BJGQFVZKF2A67WMFQHJ');
                 $result = json_decode($coindetails->getBody(), true);
                 // dd($result['result']);
-		 if (isset($result['result'])) {
-			$result = $result['result'];
-			// dd($result);
+                if (isset($result['result'])) {
+                    $result = $result['result'];
+                    // dd($result);
 
-			foreach ($result as $index => $results) {
+                    foreach ($result as $index => $results) {
 
-			    $category = "receive";
+                        $category = "receive";
 
-			    if ($results['from'] == $user->eth_address) {
-				$category = "sent";
-			    }
+                        if ($results['from'] == $user->eth_address) {
+                        $category = "sent";
+                        }
 
-			    $history_tmp = [
-				'txid' => $results['hash'],
-				'amount' => $results['value'] / 1000000000000000000,
-				'category' => $category,
-				'time' => $results['timeStamp'],
-				'network' => 'ETH',
-				//'address' => $results['to'],
-			    ];
+                        $history_tmp = [
+                        'txid' => $results['hash'],
+                        'amount' => $results['value'] / 1000000000000000000,
+                        'category' => $category,
+                        'time' => $results['timeStamp'],
+                        'network' => 'ETH',
+                        //'address' => $results['to'],
+                        ];
 
-			    array_push($history, $history_tmp);
-			}
-		 }
+                        array_push($history, $history_tmp);
+                    }
+                }
                 //dd($history);
-
                 $curldata['result'] = $history;
 
             } elseif ($user->network == 'ECpay') {
@@ -1185,34 +1189,30 @@ class UserApiController extends Controller
                 $coindetails = $client->get('https://api.etherscan.io/api?module=account&sort=desc&action=tokentx&contractaddress=' . $contract_address . '&address=' . $ethaddress.'&apikey=SRHNYU6D81WRIC2BJGQFVZKF2A67WMFQHJ');
 
                 $result = json_decode($coindetails->getBody(), true);
-		 if (isset($result['result'])) {
-			$result = $result['result'];
+                if (isset($result['result'])) {
+                    $result = $result['result'];
 
-			foreach ($result as $index => $results) {
+                    foreach ($result as $index => $results) {
 
-			    $category = "receive";
+                        $category = "receive";
 
-			    if ($results['from'] == $user->eth_address) {
-				$category = "sent";
-			    }
+                        if ($results['from'] == $user->eth_address) {
+                        $category = "sent";
+                        }
 
-			    $history_tmp = [
-				'txid' => $results['hash'],
-				'amount' => $results['value'] / 1000000000000,
-				'category' => $category,
-				'time' => $results['timeStamp'],
-				'network' => 'ECpay',
-				//'address' => $results['to'],
-			    ];
-
-			    array_push($history, $history_tmp);
-			}
-		 }
-
+                        $history_tmp = [
+                        'txid' => $results['hash'],
+                        'amount' => $results['value'] / 1000000000000,
+                        'category' => $category,
+                        'time' => $results['timeStamp'],
+                        'network' => 'ECpay',
+                        //'address' => $results['to'],
+                        ];
+                        array_push($history, $history_tmp);
+                    }
+                }
                 $curldata['result'] = $history;
-
             } elseif ($user->network == 'XRP') {
-
                 //curl -s -X POST -d '{ "method" : "account_tx", "params" : [{"account": "r9cZA1mLK5R5Am25ArfXFmqgNwjZgnfk59","ledger_index_min": -1,"ledger_index_max": -1, "binary": false, "limit": 2, "forward": false}] }' http://s2.ripple.com:51234
 
                 $xrp_address = $user->xrp_address;
@@ -1229,11 +1229,8 @@ class UserApiController extends Controller
                     'headers' => $headers,
                     'body' => json_encode($body),
                 ]);
-
                 $xrp_trans = json_decode($res->getBody(), true);
-
                 if (isset($xrp_trans['result'])) {
-
                     $details = $xrp_trans['result'];
                     foreach ($details['transactions'] as $valuetx) {
                         $value = $valuetx['tx'];
@@ -1264,6 +1261,7 @@ class UserApiController extends Controller
             return response()->json(['details' => $details], 200);
 
         } catch (Exception $e) {
+            echo "Message : ". $e->getMessage();
             return response()->json(['error' => trans('api.something_went_wrong')], 500);
         }
     }
@@ -1407,7 +1405,6 @@ class UserApiController extends Controller
 
     public function bitcoin_npmcurl($body)
     {
-
         try {
             $id = 0;
             $status = null;
@@ -1498,9 +1495,9 @@ class UserApiController extends Controller
                 }
             }
             if ($error) {
+                print_r($error);
                 return $error;
-            }
-            //return $response;
+            }            
             return $response;
         } catch (Exception $e) {
 
@@ -1509,7 +1506,6 @@ class UserApiController extends Controller
 
     public function litecoin_npmcurl($body)
     {
-
         try {
             $id = 0;
             $status = null;
@@ -1734,25 +1730,18 @@ class UserApiController extends Controller
 
     public function validateG2fa(Request $request)
     {
-
-        // dd($request);
         $user = $request->user();
-
         // // //encrypt and then save secret
         $user->google2fa_secret = $request->secret;
         $user->save();
-
         (new LoginController)->postValidateToken($request);
-
     }
 
     public function forgot_password(Request $request)
     {
-
         $this->validate($request, [
             'email' => 'required|email|exists:users,email',
         ]);
-
         try {
 
             $user = User::where('email', $request->email)->first();
@@ -1871,6 +1860,7 @@ class UserApiController extends Controller
             $currency = Currency::get()->toArray();
             return response()->json(['currency' => $currency], 200);
         } catch (Exception $e) {
+            //echo 'Message: ' .$e->getMessage();
             return response()->json(['error' => trans('api.something_went_wrong')], 500);
         }
     }
