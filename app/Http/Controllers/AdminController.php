@@ -86,7 +86,7 @@ class AdminController extends Controller
             $curldata=$this->bitcoin_npmcurl($body);
             $details = $curldata;
 
-            $client = new Client;
+            /*$client = new Client;
 
             $response = $client->get('https://api.cryptonit.net/api/ticker/FBTC%2FBTC' , [
 
@@ -94,28 +94,28 @@ class AdminController extends Controller
                    
             ]);  
             
-            $coin_details = json_decode($response->getBody(),true);
+            $coin_details = json_decode($response->getBody(),true);*/
             
-            $coin_value = $coin_details['last'];
+            $coin_value = '001';
             
-            $client = new Client;
+            /*$client = new Client;
 
             $response = $client->get('http://206.81.15.128/api/getdifficulty' , [
 
                  'headers' => ['Content-Type' => 'application/x-www-form-urlencoded'],
                        
-            ]);  
-            $difficulty = json_decode($response->getBody(),true);
+            ]); */ 
+            $difficulty = '';
 
 
-            $client = new Client;
+           /* $client = new Client;
 
             $response = $client->get('http://206.81.15.128/ext/getmoneysupply' , [
 
                  'headers' => ['Content-Type' => 'application/x-www-form-urlencoded'],
                        
-            ]);  
-            $supply = json_decode($response->getBody(),true);
+            ]);  */
+            $supply = '123';
             
             return view('admin.home',compact('getinfo','getwalletinfo','user','details','coin_value','difficulty','supply','user_total_balance'));
         }

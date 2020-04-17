@@ -48,6 +48,7 @@ class UserApiController extends Controller
 
     public function signin(Request $request)
     {
+
         $this->validate($request, [
             'email' => 'required',
             'phrase_word' => 'required',
@@ -127,6 +128,15 @@ class UserApiController extends Controller
         ];
         $curldata1 = $this->npmcurl($body);
 
+        /*$lio_url ="http://lio.io/api/node";
+        $lio_res = $client->post($lio_url, [
+        'headers' => $headers,
+        'body' => $body,
+        ]);
+        $curldata1 = json_decode($lio_res->getBody(),true);*/
+
+        //dd($curldata1);
+
         $address = $curldata1['result'];
         //---------------- LIO ------------
 
@@ -142,6 +152,7 @@ class UserApiController extends Controller
         $body = ["method" => "personal_newAccount", "params" => [$email], "id" => 1];
 
         $url = "http://localhost:8545";
+        //$url = "http://85.214.204.63:8545";
         $res = $client->post($url, [
             'headers' => $headers,
             'body' => json_encode($body),
@@ -159,6 +170,12 @@ class UserApiController extends Controller
 
         $url = "http://localhost:1337/getPrivatekey";
 
+        /* $res = $client->post($url, [
+        'headers' => $headers,
+        'body' => json_encode($body),
+        ]);
+
+        $result = json_decode($res->getBody(),true);*/
         //---------------- XRP ------------
 
         $User = $request->all();
@@ -203,6 +220,8 @@ class UserApiController extends Controller
             'ip' => $User['ip'],
         ];
 
+        //Mail::to($User->email)->send(new Signupwelcomemail($userdata1));
+
         return $User;
 
         /*} catch (Exception $e) {
@@ -226,7 +245,25 @@ class UserApiController extends Controller
     {
         try {
 
-             if ($request->network == 'BTC') {
+            /* if($request->network == 'BNB'){
+            User::where('id', Auth::user()->id)->update(['address'=>Auth::user()->eth_address, 'network' => $request->network]);
+            }
+            if($request->network == 'VEN'){
+            User::where('id', Auth::user()->id)->update(['address'=>Auth::user()->eth_address, 'network' => $request->network]);
+            }
+            if($request->network == 'OMG'){
+            User::where('id', Auth::user()->id)->update(['address'=>Auth::user()->eth_address, 'network' => $request->network]);
+            }*/
+
+            // if($request->network == 'BCH'){
+            //     User::where('id', Auth::user()->id)->update(['address'=>Auth::user()->bch_address, 'network' => $request->network]);
+            // }
+
+            /*if($request->network == 'LTC'){
+            User::where('id', Auth::user()->id)->update(['address'=>Auth::user()->ltc_address, 'network' => $request->network]);
+            }*/
+
+            if ($request->network == 'BTC') {
                 User::where('id', Auth::user()->id)->update(['address' => Auth::user()->btc_address, 'network' => $request->network]);
             }
             if ($request->network == 'ETH') {
@@ -316,6 +353,14 @@ class UserApiController extends Controller
                     'method' => 'getaccountaddress',
                 ];
                 $curldata = $this->npmcurl($body);
+
+                /*$lio_url ="http://lio.io/api/node";
+                $lio_res = $client->post($lio_url, [
+                'headers' => $headers,
+                'body' => $body,
+                ]);
+                $curldata = json_decode($lio_res->getBody(),true);*/
+
                 $user->address = $curldata['result'];
                 $user->save();
             }
@@ -376,8 +421,11 @@ class UserApiController extends Controller
                     $user->x_remember_flag_star = substr($key, 10);
                     $user->save();
                 }
-	        }
 
+	    }
+
+	   
+	    
             if ($request->network == 'BTC' || $request->network == 'ETH' || $request->network == 'ECpay') { // -------- BTC and ETH coin
 
                 if ($user->network == 'BTC') {
@@ -392,32 +440,23 @@ class UserApiController extends Controller
                     $curldata_address['result'] = $user->eth_address;
                 }
 
-		        $address = $curldata_address['result'];   /// What is the reason ?
+		$address = $curldata_address['result'];   /// What is the reason ?
 
+
+                $param = [$name, 1];
+                $body = [
+                    'params' => $param,
+                    'method' => 'getbalance',
+                ];
                 if ($user->network == 'BTC') {
-                    //$curldata = $this->bitcoin_npmcurl($body);
-                    // unspent key block starts to get real balance in the account
-                    $param = [1, 9999999,[$user->btc_address]];
-                    $body = [
-                        'params' => $param,
-                        'method' => 'listunspent',
-                    ];
-                    $res = $this->bitcoin_npmcurl($body);
-                    
-                    $utxos = $res['result'];
-                    /// unspent key block ends
-                    if(!empty($utxos)){
-                        $curldata['result'] = self::txbalance($utxos);
-                    } else {
-                        $curldata['result'] = 0;
-                    }
-		        }
+                    $curldata = $this->bitcoin_npmcurl($body);
+		}
                 if ($user->network == 'ETH') {
                     $client = new Client;
                     $coindetails = $client->get('https://api.etherscan.io/api?module=account&action=balance&address=' . $address.'&apikey=SRHNYU6D81WRIC2BJGQFVZKF2A67WMFQHJ');
                     $coindetails = json_decode($coindetails->getBody(), true);
                     $amount = $coindetails['result'] / 1000000000000000000;
-		            $curldata['result'] = $amount;
+		    $curldata['result'] = $amount;
                 }
                 if ($user->network == 'ECpay') {
                     $client = new Client;
@@ -431,7 +470,12 @@ class UserApiController extends Controller
                     $coin = $curldata['result'];
                 }
 
+                //$balance = User::where('id',$user->id)->first();
+                //$balance->coin = $coin;
+                //$balance->save();
+
                 $avb_amt = $coin;
+                //$avb_amt=0.000373132;
                 $fee = 0.000374;
 
                 $calc_amt = \DB::select('select ' . $avb_amt . '-' . $fee);
@@ -445,7 +489,7 @@ class UserApiController extends Controller
                     $tranfee = $tranfee_temp;
                 }
 
-		        $coin_type = array();
+		$coin_type = array();
 
                 $client = new Client;
 
@@ -471,6 +515,18 @@ class UserApiController extends Controller
                 $ETH = $coin_type['ETH'];
                 //----------------------- END ETH  ----------------
 
+
+	
+                //----------------------- ???  ----------------
+                // if ($user->fiat_currency == "USD") {
+                //     $bitstamp = $client->get('https://api.coinmarketcap.com/v2/ticker/?convert=USD');
+                // } elseif ($user->fiat_currency == "EUR") {
+                //     $bitstamp = $client->get('https://api.coinmarketcap.com/v2/ticker/?convert=EUR');
+                // }
+                // $bitstampdetails = json_decode($bitstamp->getBody(), true);
+                // $loop = 10;//$bitstampdetails['data'];
+                //----------------------- ??? ----------------
+
                 if ($user->network == 'BTC') {
                     $currency = "BTC";
                     $currency_value = $BTC;
@@ -481,23 +537,53 @@ class UserApiController extends Controller
                     $currency_value = $ETH;
                     $erc = 0;
                     $decimal = 18;
-		        }
+		}
 
                 if ($user->network == 'ECpay') { // --------------- EcPay Token coin
                     $currency = "ECpay";
                     if ($user->fiat_currency == "USD") {
+
+                        //$bitstamp = $client->get('https://api.coinmarketcap.com/v2/ticker/?convert=EUR');
                         $bitstamp = $client->get('https://www.bitstamp.net/api/eur_usd/');
+
+
                         $bitstampdetails = json_decode($bitstamp->getBody(), true);
+                       // dd($bitstampdetails);
+                        // foreach ($bitstampdetails['data'] as $liveprice) {
+
+                        //     if ($liveprice['symbol'] == 'BTC') {
+                        //         $btc_usd_liveprice = $liveprice['quotes']['USD']['price'];
+                        //         $btc_eur_liveprice = $liveprice['quotes']['EUR']['price'];
+                        //     }
+                        // }
+
+                        // $one_btc_usd = 1 / $btc_usd_liveprice;
+                        // $ecpay = $one_btc_usd * $btc_eur_liveprice;
                         $ecpay = $bitstampdetails['sell'];
 
                     } elseif ($user->fiat_currency == "EUR") {
+
+                        // $bitstamp = $client->get('https://api.coinmarketcap.com/v2/ticker/?convert=EUR');
+
+                        //  $bitstampdetails = json_decode($bitstamp->getBody(), true);
+                        //    foreach($bitstampdetails['data'] as $liveprice){
+
+                        //         if($liveprice['symbol'] == 'BTC'){
+                        //             $btc_eur_liveprice = $liveprice['quotes']['EUR']['price'];
+                        //             $btc_usd_liveprice = $liveprice['quotes']['USD']['price'];
+
+                        //         }
+                        //     }
+
+                        // $one_btc_eur = 1/$btc_eur_liveprice;
+                        // $ecpay =  $one_btc_eur * $btc_usd_liveprice;
                         $ecpay = 1; //$curldata['result'];
                     }
 
                     $currency_value = $ecpay;
                     $decimal = 12;
                     $erc = 0;
-                    //$tranfee = 1;
+                    $tranfee = 1;
                 }
             } elseif ($request->network == 'XRP') { // ------------------------- XRP coin
                 $currency = "XRP";
@@ -513,6 +599,12 @@ class UserApiController extends Controller
                 $erc = 0;
                 $address = $user->xrp_address;
 
+                //curl -s -X POST -d '{ "method" : "account_info", "params" : [{"account": "r9cZA1mLK5R5Am25ArfXFmqgNwjZgnfk59","strict": true,"ledger_index": "validated"}] }' http://s2.ripple.com:51234
+
+                //{ "method" : "account_info", "params" : [{"account": "r9cZA1mLK5R5Am25ArfXFmqgNwjZgnfk59","strict": true,"ledger_index": "validated"}] }
+
+                //{"method":"account_info","params":[{"account":"r9cZA1mLK5R5Am25ArfXFmqgNwjZgnfk59","strict":true,"ledger_index":"validated"}]}
+
                 $xrp_bal_url = 'http://s2.ripple.com:51234';
                 $headers = [
                     'Content-Type' => 'application/json',
@@ -527,6 +619,8 @@ class UserApiController extends Controller
 
                 $xrp_tmp_balance = json_decode($res->getBody(), true);
 
+                //dd($xrp_tmp_balance);
+
                 if (isset($xrp_tmp_balance['result']['account_data'])) {
 
                     $xrp_balance = $xrp_tmp_balance['result']['account_data']['Balance'];
@@ -536,6 +630,7 @@ class UserApiController extends Controller
                 }
 
                 $avb_amt = $coin;
+                //$avb_amt=0.000373132;
                 $fee = 0.000374;
 
                 $calc_amt = \DB::select('select ' . $avb_amt . '-' . $fee);
@@ -549,9 +644,13 @@ class UserApiController extends Controller
                     $tranfee = $tranfee_temp;
                 }
 
-	        } elseif ($request->network == 'LIO') { // ------------------ LIO coin
+	    } elseif ($request->network == 'LIO') { // ------------------ LIO coin
 
-		        $fiat_currency = $user->fiat_currency;
+
+                /*$currency = Setting::get('currency_symbol');
+                $currency_value = Setting::get('currency_value');*/
+
+		    $fiat_currency = $user->fiat_currency;
 
                 $currencies = Currency::where('currency', $fiat_currency)->first();
                 $currency = $fiat_currency;
@@ -562,17 +661,40 @@ class UserApiController extends Controller
                 $liveprice_lio = json_decode($lio_usd->getBody(), true);
 
                 if ($currency == 'USD') {
+
                     $client = new Client;
                     $eur_usd = $client->get('https://www.freeforexapi.com/api/live?pairs=EURUSD');
-		            $usd_value = json_decode($eur_usd->getBody(), true);
+
+		    $usd_value = json_decode($eur_usd->getBody(), true);
+
                     $usd_liveprice = $usd_value['rates']['EURUSD']['rate'];
+
                     $currency_value = $usd_liveprice * $liveprice_lio['ticker']['last'];
                 } else {
+
                     $currency_value = $liveprice_lio['ticker']['last'];
-		        }
+		}
+
+                /*if($currencies){
+                $currency = $fiat_currency;
+                $currency_value = $currencies['coin_value'];
+                }else{
+                $currency = Setting::get('currency_symbol');
+                $currency_value = Setting::get('currency_value');
+                }*/
+
+                /*$param=[$name];
+                $body = [
+                'params' => $param,
+                'method' => 'getaddressesbyaccount',
+                ];
+                $curldata=$this->npmcurl($body);
+
+                $address = $curldata['result'];*/
+
                 $address = $user->address;
 
-                $add = Auth::user()->name;
+                //$add = Auth::user()->name;
                 $param = [$name, 1];
                 $body = [
                     'params' => $param,
@@ -585,7 +707,18 @@ class UserApiController extends Controller
 
                 }
 
+                //$balance = User::where('id',Auth::user()->id)->first();
+                /*$user->coin = $coin;
+                $user->save();  */
+
+                /*
+                $usd_currency=Currency::where('currency','USD')->first();
+
+                $currency = $usd_currency->currency;
+                $einr_value = $usd_currency->coin_value;*/
+
                 $avb_amt = $coin;
+                //$avb_amt=0.000373132;
                 $fee = 0.000374;
 
                 $calc_amt = \DB::select('select ' . $avb_amt . '-' . $fee);
@@ -603,9 +736,12 @@ class UserApiController extends Controller
 
             $user->ecpay_address = $user->eth_address;
 
+            //return response()->json(['address' => $address,'coin'=>$coin,'user'=>$user,'coin_value'=>$einr_value,'currency'=>$currency,'available_final_amount'=>$tranfee], 200);
+
             return response()->json(['coin_selected' => $coin_selected, 'address' => $address, 'coin' => $coin, 'user' => $user, 'coin_value' => $currency_value, 'currency' => $currency, 'available_final_amount' => $tranfee, 'contract' => $contract, 'erc' => $erc, 'decimal' => $decimal], 200);
 
         } catch (Exception $e) {
+            echo 'Message: ' .$e->getMessage();
             return response()->json(['error' => $e->getMessage()], 500);
         }
     }
@@ -627,6 +763,7 @@ class UserApiController extends Controller
             $lio_address = $user->address;
 
             //------------- Bitcoin ---------------
+            //curl --user myusername --data-binary '{"jsonrpc": "1.0", "id":"curltest", "method": "dumpprivkey", "params": ["myaddress"] }' -H 'content-type: text/plain;' http://127.0.0.1:8332/
 
             $param = [$btc_address];
 
@@ -672,239 +809,6 @@ class UserApiController extends Controller
         }
     }
 
-    public function sendcoin(Request $request)
-    {
-        $this->validate($request, [
-            'amount' => 'required|numeric',
-            'to_address' => 'required|regex:/^[a-zA-Z0-9]+$/u',
-        ]);
-
-        try {
-
-            $user = Auth::user();
-            if ($user->block_status == 0) {
-                return response()->json(['error' => "Transaction Failed, Please try again later."], 500);
-            }
-
-            $name = $user['email'];
-
-            if ($user->network == 'LIO') {
-
-                $param = [$name, $request->to_address, (float) $request->amount, 6];
-                $body = [
-                    'params' => $param,
-                    'method' => 'sendfrom',
-                ];
-                $res = $this->npmcurl($body);               
-                if(isset($res['result'])) {
-                    $curldata['result'] = $res['result'];
-                } else {
-                    return response()->json(['status'=>'Failed','message' => $res], 500);
-                }
-            } elseif ($user->network == 'BTC') {
-                $name = $user['email'];
-                $from_address = $user['btc_address'];
-                $param = [$name, $from_address, $request->to_address, $request->amount];
-                $body = [
-                    'params' => $param,
-                    'method' => 'sendfrom',   /// This method to be changed to raw transaction based send method. 
-                ];
-                $res = $this->sendbtc($body);
-                if(isset($res['result']))
-                    $curldata['result'] = $res['result'];
-                else
-                    return response()->json(['error' => "Transaction Failed"], 500);
-                //$curldata = $this->bitcoin_npmcurl($body); /// previous method used
-            } elseif ($user->network == 'ETH') {
-                $name = $user['email'];
-                $client = new Client();
-                $headers = [
-                    'Content-Type' => 'application/json',
-                    'Accept' => 'application/json',
-                ];
-                $body = ["jsonrpc" => "2.0", "method" => "getPrivateKey", "params" => array("method" => "getPrivateKey", "address" => $user->eth_address, "password" => $user->email)];
-                $url = "http://localhost:8084/getKey";
-
-                $res = $client->post($url, [
-                    'headers' => $headers,
-                    'body' => json_encode($body),
-                ]);
-                
-                $details = json_decode($res->getBody(), true);
-                if (isset($details['privateKey'])) {
-
-                     $price_num = \DB::select('select (' . $request->amount . '-0.000084) * 1000000000000000000'); 
-                    $arr = json_decode(json_encode($price_num[0]), true);
-                    $final_num = current($arr);
-                    
-                    $price = \DB::select('select CONV(' . $final_num . ',10,16)');
-                    $arr = json_decode(json_encode($price[0]), true);
-                    $price = '0x' . current($arr);
-                    $headers = [];
-                    $ch = curl_init();
-                    $params = array(
-                        "method" => "create_rawtx",
-                        "formaddr" => $user->eth_address,
-                        "pvk" => $details['privateKey'],
-                        "toddr" => $request->to_address,
-                        "amount" => $request->amount,
-                        "gasPrice" => 4000000000,
-                        "url" => "https://mainnet.infura.io/v3/9a362ef8feb14299943089c1f563077e",
-                    );
-                    
-                    curl_setopt($ch, CURLOPT_URL, "http://localhost:3005/sendEther");
-                    curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
-                    curl_setopt($ch, CURLOPT_POST, 1);
-                    curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
-                    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-                    curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($params));                    
-                    curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
-                    $result = curl_exec($ch);
-                    if (curl_errno($ch)) {
-                        echo 'Error:' . curl_error($ch);
-                    }
-                    curl_close($ch);
-                    $result = json_decode($result);
-                    
-                    if (isset($result->error)) {
-                        return response()->json(['status'=>'Failed','message' => "Transaction Failed"], 500);
-                    } else {
-                        $curldata['result'] = $result->txid;
-                    } 
-                } else {
-                    return response()->json(['status'=>'Failed','message' => "Transaction Failed"], 500);
-                }
-            } elseif ($user->network == 'ECpay') {
-
-                $client = new Client();
-                $headers = [
-                    'Content-Type' => 'application/json',
-                    'Accept' => 'application/json',
-                ];
-                $body = ["jsonrpc" => "2.0", "method" => "getPrivateKey", "params" => array("method" => "getPrivateKey", "address" => $user->eth_address, "password" => $user->email)];
-                $url = "http://localhost:8084/getKey";
-
-                $res = $client->post($url, [
-                    'headers' => $headers,
-                    'body' => json_encode($body),
-                ]);
-                
-                $details = json_decode($res->getBody(), true);
-                
-                if (isset($details['privateKey'])) {
-
-                    $ch = curl_init();
-                    $params = array(
-                        "method" => "create_rawecpaytoken",
-                        "formaddr" => $user->eth_address,
-                        "pvk" => $details['privateKey'],
-                        "toddr" => $request->to_address,
-                        "amount" => $request->amount * 1000000000000,
-                        "url" => "https://mainnet.infura.io/v3/9a362ef8feb14299943089c1f563077e",
-                    );
-                    curl_setopt($ch, CURLOPT_URL, "http://localhost:8110");
-                    curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
-                    curl_setopt($ch, CURLOPT_POST, 1);
-                    curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
-                    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-                    curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($params));
-                    $headers = array();
-                    $headers[] = "Content-Type : application/json";
-                    curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
-                    $result = curl_exec($ch);
-                    if (curl_errno($ch)) {
-                        echo 'Error:' . curl_error($ch);
-                    }
-                    curl_close($ch);
-                    $result = json_decode($result);
-                    
-                    if (isset($result->error)) {
-                        return response()->json(['error' => "Transaction Failed Low ETH Balance."], 500);
-                    } else {
-                        $curldata['result'] = $result->txid;
-
-                    }
-                } else {
-                    return response()->json(['error' => "Transaction Failed."], 500);
-                }
-
-            } elseif ($user->network == 'XRP') {
-
-                $client = new Client();
-                $headers = [
-                    'Content-Type' => 'application/json',
-                ];
-
-                $dest_tag = mt_rand(100000000, 999999999);
-
-                $price = $request->amount;
-                $xrp_temp_key = $user->x_remember_flag_port . $user->x_remember_flag_star;
-
-                $xrp_key = $this->simple_crypt($xrp_temp_key, 'decrypt');
-
-                $xrp_data = $price . ":" . $user->xrp_address . ":" . $request->to_address . ":" . $dest_tag . ":" . $xrp_key;
-
-                $body = $xrp_data;
-                $send_temp_xrp = $client->get('http://localhost:8081/passparams?key=' . $body);
-                $send_xrp = json_decode($send_temp_xrp->getBody(), true);
-
-                if (isset($send_xrp['id'])) {
-                    $curldata['result'] = $send_xrp['id'];
-                } else {
-                    return response()->json(['error' => "Transaction Failed"], 500);
-                }
-            }
-
-            if (isset($curldata['result'])) {
-
-                $txn_hash = $curldata['result'];
-                $maildata = [
-                    'type' => $user->network,
-                    'sender' => $user->address,
-                    'receiver' => $request->to_address,
-                    'amount' => $request->amount,
-                    'coin_symbol' => Setting::set('currency_symbol'),
-                ];
-
-                $receiver = User::where('address', $request->to_address)->first();
-
-                $txn = new Transaction();
-                $txn->type = $user->network;
-                $txn->sender = $user->id;
-                if ($receiver) {
-                    $txn->receiver = $receiver->id;
-                    $receiver_email = $receiver->email;
-                    Mail::to($receiver_email)->send(new Receivetranscationmail($maildata));
-                } else {
-                    $txn->receiver = 0;
-                }
-                $txn->txn_hash = $txn_hash;
-                $txn->sender_address = $user->address;
-                $txn->receiver_address = $request->to_address;
-                $txn->amount = $request->amount;
-                $txn->fiat_currency = $user->fiat_currency;
-                $txn->save();
-
-                $sender_email = $user->email;
-                $receiver_email = $receiver;
-
-                Mail::to($sender_email)->send(new Sendtranscationmail($maildata));
-
-                if ($user->push_note_status == 1) {
-                    //(new SendPushNotification)->SendTransaction($user->id,$request->amount);
-                    //(new SendPushNotification)->ReceiveTransaction($receiver->id,$request->amount);
-                }
-
-                return response()->json(['status' => "success",'message' => "Coin Send Successfully !"], 200);
-            } else {
-                return response()->json(['error' => "Transaction Failed"], 500);
-            }
-
-        } catch (Exception $e) {
-            return back()->with('flash_error', 'Send coin exception !');
-        }
-
-    }
 
     public function history(Request $request)
     {
@@ -916,7 +820,7 @@ class UserApiController extends Controller
             $list_transaction = [];
 
             $user = Auth::user();
-            $ownAddress = $user->btc_address;
+
             $name = $user->email;
 
             $param = [$name, 50, 0];
@@ -934,7 +838,7 @@ class UserApiController extends Controller
                     $details = $curldata['result'];
                     $time  = array_column($details, 'time');
                     array_multisort($time,SORT_DESC,$details);
-                    foreach ($details as $value) {                        
+                    foreach ($details as $value) {
                         $history_tmp = [
                             'category' => $value['category'],
                             'amount' => $value['amount'],
@@ -942,6 +846,7 @@ class UserApiController extends Controller
                             'time' => $value['time'],
                             'network' => 'LIO',
                         ];
+
                         array_push($history, $history_tmp);
                     }
 
@@ -950,7 +855,27 @@ class UserApiController extends Controller
                 $curldata['result'] = $history;
 
             } elseif ($user->network == 'BTC') {
-                $history = $this->btctransactions($user->btc_address);
+                $curldata = $this->bitcoin_npmcurl($body);
+
+                if (isset($curldata['result'])) {
+
+                    $details = $curldata['result'];
+                    $time  = array_column($details, 'time');
+		            array_multisort($time,SORT_DESC,$details);
+                    foreach ($details as $value) {
+                        $history_tmp = [
+                            'category' => $value['category'],
+                            'amount' => $value['amount'],
+                            'txid' => $value['txid'],
+                            'time' => $value['time'],
+                            'network' => 'BTC',
+                        ];
+
+                        array_push($history, $history_tmp);
+                    }
+
+                }
+
                 $curldata['result'] = $history;
 
             } elseif ($user->network == 'ETH') {
@@ -960,8 +885,11 @@ class UserApiController extends Controller
                 $client = new Client;
                 $coindetails = $client->get('http://api.etherscan.io/api?module=account&action=txlist&address=' . $ethaddress . '&startblock=0&endblock=99999999&sort=desc&apikey=SRHNYU6D81WRIC2BJGQFVZKF2A67WMFQHJ');
                 $result = json_decode($coindetails->getBody(), true);
+                // dd($result['result']);
                 if (isset($result['result'])) {
                     $result = $result['result'];
+                    // dd($result);
+
                     foreach ($result as $index => $results) {
 
                         $category = "receive";
@@ -969,17 +897,20 @@ class UserApiController extends Controller
                         if ($results['from'] == $user->eth_address) {
                         $category = "sent";
                         }
+
                         $history_tmp = [
                         'txid' => $results['hash'],
                         'amount' => $results['value'] / 1000000000000000000,
                         'category' => $category,
                         'time' => $results['timeStamp'],
                         'network' => 'ETH',
+                        //'address' => $results['to'],
                         ];
 
                         array_push($history, $history_tmp);
                     }
                 }
+                //dd($history);
                 $curldata['result'] = $history;
 
             } elseif ($user->network == 'ECpay') {
@@ -988,6 +919,7 @@ class UserApiController extends Controller
                 $contract_address = '0x3b0D6B5F04C1A70a661F9EF32992f9e2C670ae7A';
 
                 $client = new Client;
+                // $coindetails = $client->get('http://api.etherscan.io/api?module=account&action=txlist&address=' . $ethaddress . '&startblock=0&endblock=99999999&sort=desc');
 
                 $coindetails = $client->get('https://api.etherscan.io/api?module=account&sort=desc&action=tokentx&contractaddress=' . $contract_address . '&address=' . $ethaddress.'&apikey=SRHNYU6D81WRIC2BJGQFVZKF2A67WMFQHJ');
 
@@ -1005,16 +937,18 @@ class UserApiController extends Controller
 
                         $history_tmp = [
                         'txid' => $results['hash'],
-                        'amount' => number_format($results['value'] / 1000000000000, 8, '.', ''), //bcmul(1,$results['value'] / 1000000000000,8),
+                        'amount' => $results['value'] / 1000000000000,
                         'category' => $category,
                         'time' => $results['timeStamp'],
                         'network' => 'ECpay',
+                        //'address' => $results['to'],
                         ];
                         array_push($history, $history_tmp);
                     }
                 }
                 $curldata['result'] = $history;
             } elseif ($user->network == 'XRP') {
+                //curl -s -X POST -d '{ "method" : "account_tx", "params" : [{"account": "r9cZA1mLK5R5Am25ArfXFmqgNwjZgnfk59","ledger_index_min": -1,"ledger_index_max": -1, "binary": false, "limit": 2, "forward": false}] }' http://s2.ripple.com:51234
 
                 $xrp_address = $user->xrp_address;
 
@@ -1097,7 +1031,7 @@ class UserApiController extends Controller
     public function npmcurl($body)
     {
 
-       // try {
+        try {
             $id = 0;
             $status = null;
             $error = null;
@@ -1129,7 +1063,7 @@ class UserApiController extends Controller
                 'method' => $method,
                 'params' => $params,
                 'id' => $id,
-            ));            
+            ));
             //$curl    = curl_init("{$proto}://{$host}:{$port}/{$url}");
             $curl = curl_init("{$proto}://{$host}:{$port}/");
             $options = array(
@@ -1163,7 +1097,6 @@ class UserApiController extends Controller
             curl_setopt_array($curl, $options);
             // Execute the request and decode to an array
             $raw_response = curl_exec($curl);
-            
             $response = json_decode($raw_response, true);
             // If the status is not 200, something is wrong
             $status = curl_getinfo($curl, CURLINFO_HTTP_CODE);
@@ -1172,7 +1105,7 @@ class UserApiController extends Controller
             curl_close($curl);
             if (!empty($curl_error)) {
                 $error = $curl_error;
-            }            
+            }
             if ($response['error']) {
                 // If EINR returned an error, put that in $error
                 $error = $response['error']['message'];
@@ -1193,15 +1126,14 @@ class UserApiController extends Controller
                         break;
                 }
             }
-            
-            if ($error!='') {
-                return $error;
+            if ($error) {
+                return $response;
                 //return false;
             }
             return $response;
             //return $response['result'];
-        // } catch (Exception $e) {
-        // }
+        } catch (Exception $e) {
+        }
     }
 
     //curl to hit bitcoin server
@@ -1216,8 +1148,8 @@ class UserApiController extends Controller
             $response = null;
 
             $proto = "http";
-            $username = "liowaluser";
-            $password = "YqMhMRxoLh93";
+            $username = "because";
+            $password = "because";
             $host = "127.0.0.1";
             $port = "8332"; //"8222";
             $url = '';
@@ -1303,8 +1235,8 @@ class UserApiController extends Controller
             }            
             return $response;
         } catch (Exception $e) {
-            echo $e->getMessage();
-            return  $e;
+	   echo $e->getMessage();
+	   return  $e;
         }
     }
 
@@ -1419,7 +1351,8 @@ class UserApiController extends Controller
         }
     }
 
-    /** bitcoincash_npmcurl  **/
+    //bitcoincash_npmcurl
+
     public function bitcoincash_npmcurl($body)
     {
 
@@ -1685,6 +1618,19 @@ class UserApiController extends Controller
         }
     }
 
+    /*public function coinselected(){
+    try{
+
+    $user=Auth::user();
+    $coin_selected=explode(',',$user->coin_types);
+
+    return response()->json(['status'=>"success",'coin_selected' =>$coin_selected], 200);
+
+    }catch(Exception $e){
+    return response()->json(['error' => trans('api.something_went_wrong')], 500);
+    }
+    }*/
+
     public function selectlanguage(Request $request)
     {
         try {
@@ -1785,256 +1731,4 @@ class UserApiController extends Controller
         return $res;
     }
 
-    public function sendbtc($bodyp) {
-       // bitcoin_npmcurl
-       //$param = [$name, $from_address, $request->to_address, $request->amount];
-
-       // private key block starts
-        $param = ['from_address' => $bodyp['params'][1]];
-        $body = [
-            'params' => $param,
-            'method' => 'dumpprivkey',
-        ];
-        $res = $this->bitcoin_npmcurl($body);
-        $private_key = $res['result'];
-
-        /// private key block ends
-
-        // unspent key block starts
-        $param = [1, 9999999,[$bodyp['params'][1]]];
-        $body = [
-            'params' => $param,
-            'method' => 'listunspent',
-        ];
-        $res = $this->bitcoin_npmcurl($body);
-        $utxos = $res['result'];
-        /// unspent key block ends
-        if(!empty($utxos)){
-            $balance = self::txbalance($utxos);
-            $total_send = bcadd($bodyp['params'][3], 0.0001, 8);
-            if($this->balance >= $total_send) {
-                $newbalance = (float)bcsub($balance, $total_send, 8);
-                if($newbalance >0){
-                    $tx = array(
-						$bodyp['params'][2] => (float)$bodyp['params'][3],
-						$bodyp['params'][1] => $newbalance
-					);                     
-                }else {
-                    $tx = array(
-						$bodyp['params'][2] => (float)$bodyp['params'][3]
-					);
-                }
-
-                $rawtx = self::createrawtransaction($utxos,$tx);
-				if($rawtx){
-                    $hex = self::signrawtransaction($rawtx, $utxos, [$private_key]);
-					if($hex){
-						$tx = self::sendrawtransaction($hex);	
-					   	if($tx){
-					   	    return $tx;
-					   	} else {
-					   	    return false;
-					   	}
-					} else {
-						return false;
-					}
-				} else {
-					return false;
-				} 
-            }             
-        } else {
-			return "No balance in your account";
-		}
-    }
-
-    private function txbalance($utxos){
-		$this->balance = 0;
-		if(!empty($utxos)){
-    	     foreach($utxos as $utxo){
-            	$this->balance = bcadd($this->balance, $utxo['amount'], 8);
-            }
-	    }
-		return $this->balance;
-    }
-    
-    private function createrawtransaction($utxo,$tx){
-		if(!empty($utxo) && !empty($tx)){
-
-            // raw transaction block starts
-            $param = [$utxo, $tx];
-            $body = [
-                'params' => $param,
-                'method' => 'createrawtransaction',
-            ];
-            $res = $this->bitcoin_npmcurl($body);
-            $rawtx = $res['result'];
-            if(!empty($rawtx)){
-				return $rawtx;
-			} else {
-				return false;
-			}
-            /// raw transaction block ends
-		} else {
-			return false;
-		}
-    }
-    
-    private function signrawtransaction($rawtx, $utxos, $pvkey) {
-		if(!empty($rawtx) && !empty($utxos) && !empty($pvkey)){
-            // signrawtransaction block starts
-            $param = [$rawtx, $utxos, $pvkey];
-            $body = [
-                'params' => $param,
-                'method' => 'signrawtransaction',
-            ];
-            $res = $this->bitcoin_npmcurl($body);
-            $hex = $res['result'];
-			if($hex['hex']){
-				return $hex['hex'];
-			} else {
-				return false;
-			}
-        }
-        // signrawtransaction block ends
-	}
-	
-	private function sendrawtransaction($hex){
-		if(!empty($hex)){
-            $param = [$hex];
-            $body = [
-                'params' => $param,
-                'method' => 'sendrawtransaction',
-            ];
-            $res = $this->bitcoin_npmcurl($body);
-            $txid = $res['result'];
-			if(!empty($txid)){
-		    	return $res;
-			} else {
-			    return false;
-			}
-		} else {
-			return false;
-		}
-    }
-    
-    private function btctransactions($address){
-        $url = "https://insight.bitpay.com/api/txs/?address=$address"; 
-        $ch = curl_init();
-        curl_setopt($ch, CURLOPT_URL, $url);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-        $headers = array();
-        $headers[] = "Accept: application/json, text/plain";
-        curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
-        if (curl_errno($ch)) {
-            echo $result = 'Error:' . curl_error($ch);
-        } else {
-            $result = curl_exec($ch);
-        }
-        curl_close($ch);
-        $result= json_decode($result);
-        $fresult = [];  
-        if($result->pagesTotal > 1) {            
-            for ($i=0; $i < $result->pagesTotal;$i++) {
-                $url = "https://insight.bitpay.com/api/txs/?address=$address&pageNum=$i";
-                $ch = curl_init();
-                curl_setopt($ch, CURLOPT_URL, $url);
-                curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
-                curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
-                curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-                $headers = array();
-                $headers[] = "Accept: application/json, text/plain";
-                curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
-                if (curl_errno($ch)) {
-                    echo $result = 'Error:' . curl_error($ch);
-                } else {
-                    $result = curl_exec($ch);
-                }
-                curl_close($ch);           
-                $result = json_decode($result);   
-
-                if(isset($result->txs) && count($result->txs) > 0){
-                    foreach($result->txs as $transaction){
-                        $temp= [];
-                        $temp['txid']    = $transaction->txid;
-                        $temp['sender']     = $transaction->vin[0]->addr;
-                        // $temp['confirm']    = $transaction->confirmations;
-                        // $temp['fees']       = $transaction->fees;
-                        $temp['time']       = $transaction->time;
-                        $temp['network'] = 'BTC';
-                        foreach($transaction->vin as $vin){
-                            if(isset($vin->addr) && $vin->addr === $address){
-                                break;
-                            }
-                        }
-                        foreach ($transaction->vout as $vout) {
-                            if(isset($vin->addr) && $vin->addr === $address)
-                            {
-                                if(isset($vout->scriptPubKey->addresses) && !in_array($address, $vout->scriptPubKey->addresses)){
-                                    $temp['receiver'] = $vout->scriptPubKey->addresses[0];
-                                    $temp['amount'] = number_format($vout->value, 8, '.', ''); //bcmul(-1,$vout->value,8);
-                                    $temp['category'] = "send";
-                                    break;
-                                }
-                            }
-                            else
-                            {
-                                if(in_array($address, $vout->scriptPubKey->addresses)){
-                                    $temp['receiver'] = $address;
-                                    $temp['amount'] = number_format($vout->value, 8, '.', ''); //bcmul(1,$vout->value,8);
-                                    $temp['category'] = "receive";
-                                    break;
-                                }
-                            }
-                        }
-                        unset($temp['receiver']);
-                        unset($temp['sender']);
-                        $fresult[] = $temp;
-                    }
-                }                             
-            }
-        } else {
-            if(isset($result->txs) && count($result->txs) > 0){
-                foreach($result->txs as $transaction){
-                    $temp= [];
-                    $temp['txid']    = $transaction->txid;
-                    $temp['sender']     = $transaction->vin[0]->addr;
-                    // $temp['confirm']    = $transaction->confirmations;
-                    // $temp['fees']       = $transaction->fees;
-                    $temp['time']       = $transaction->time;
-                    $temp['network'] = 'BTC';
-                    foreach($transaction->vin as $vin){
-                        if(isset($vin->addr) && $vin->addr === $address){
-                            break;
-                        }
-                    }
-                    foreach ($transaction->vout as $vout) {
-                        if(isset($vin->addr) && $vin->addr === $address)
-                        {
-                            if(!in_array($address, $vout->scriptPubKey->addresses)){
-                                $temp['receiver'] = $vout->scriptPubKey->addresses[0];
-                                $temp['amount'] = number_format($vout->value, 8, '.', ''); //bcmul(-1,$vout->value,8);
-                                $temp['category'] = "send";
-                                break;
-                            }
-                        }
-                        else
-                        {
-                            if(in_array($address, $vout->scriptPubKey->addresses)){
-                                $temp['receiver'] = $address;
-                                $temp['amount'] = number_format($vout->value, 8, '.', ''); //bcmul(1,$vout->value,8);
-                                $temp['category'] = "receive";
-                                break;
-                            }
-                        }
-                    }
-                    unset($temp['receiver']);
-                    unset($temp['sender']);
-                    $fresult[] = $temp;
-                }
-            } 
-        }
-        return $fresult;
-    }
 }

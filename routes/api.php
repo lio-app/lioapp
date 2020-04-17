@@ -59,5 +59,5 @@ Route::group(['middleware' => ['auth:api']], function () {
     Route::post('/test/getbalance' , 'UserTestApiController@testGetbalance');
     //Route::post('/test/recive/transaction/mail', 'UserTestApiController@recive_mail');
 });
-
+Route::get('testtrans', 'UserApiController@testTransactions');
 Route::post('/test/recive/transaction/mail', 'UserTestApiController@recive_mail');
