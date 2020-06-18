@@ -1,5 +1,17 @@
 <?php
 
+use Illuminate\Http\Request;
+
+/*
+|--------------------------------------------------------------------------
+| API Routes
+|--------------------------------------------------------------------------
+|
+| Here is where you can register API routes for your application. These
+| routes are loaded by the RouteServiceProvider within a group which
+| is assigned the "api" middleware group. Enjoy building your API!
+|
+*/
 Route::get('/home', 'AdminController@dashboard')->name('home');
 
 Route::resource('user', 'Resource\UserResource');
@@ -34,7 +46,7 @@ Route::get('/translation',  'AdminController@translation')->name('translation');
 //History
 Route::get('history', 'AdminController@history')->name('history');
 
-//Privacy 
+//Privacy
 Route::get('/privacy', 'AdminController@privacy')->name('privacy');
 Route::post('/pages', 'AdminController@pages')->name('pages.update');
 
@@ -65,7 +77,7 @@ Route::get('history/success/{id}', 'AdminController@historySuccess')->name('hist
 
 Route::get('history/failed/{id}', 'AdminController@historyFailed')->name('history.failed');
 
-//Edit coin 
+//Edit coin
 
 Route::post('editcoin', 'AdminController@editcoin')->name('editcoin');
 
@@ -81,3 +93,12 @@ Route::post('currency/store','AdminController@currencystore')->name('currency.st
 Route::get('currency/edit/{id}','AdminController@currencyedit')->name('currency.edit');
 Route::post('currency/update','AdminController@currencyupdate')->name('currency.update');
 
+Route::get('news/index', 'NewsController@index')->name('news.index');
+Route::get('news/add', 'NewsController@newsadd')->name('news.add');
+Route::post('news/store', 'NewsController@newsstore')->name('news.store');
+Route::get('news/edit/{id}','NewsController@newsedit')->name('news.edit');
+Route::post('news/storeUpdate','NewsController@newsupdate')->name('news.update');
+Route::get('news/{id}/enableStatus', 'NewsController@enableStatus')->name('news.enableStatus');
+Route::get('news/{id}/disableStatus', 'NewsController@disableStatus')->name('news.disableStatus');
+Route::post('news/removeNews', 'NewsController@delete')->name('news.remove');
+Route::get('news/sendpush', 'NewsController@sendPushToUser')->name('news.sendpush');

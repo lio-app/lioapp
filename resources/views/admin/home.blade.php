@@ -14,7 +14,7 @@
 			<div class="box box-block bg-white tile tile-1 mb-2">
 				<div class="t-icon right"><span class="bg-danger"></span><i class="ti-rocket"></i></div>
 				<div class="t-content">
-					<h6 class="text-uppercase mb-1">TOTAL NO. OF BLOCKS</h6>
+					<h6 class="text-uppercase mb-1">TOTAL NO. OF BLOCKS </h6>
 					<h1 class="mb-1">{{$getinfo['blocks']}}</h1>
 					
 				</div>

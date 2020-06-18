@@ -95,6 +95,20 @@
 				</ul>
 			</li>
 
+			<li class="menu-title">@lang('admin.include.news')</li>
+
+			<li class="with-sub">
+				<a href="#" class="waves-effect  waves-light">
+					<span class="s-caret"><i class="fa fa-angle-down"></i></span>
+					<span class="s-icon"><i class="ti-view-grid"></i></span>
+					<span class="s-text">@lang('admin.include.news')</span>
+				</a>
+				<ul>
+					<li><a href="{{ route('admin.news.index') }}"> @lang('admin.include.lstnews') </a></li>
+
+				</ul>
+			</li>
+
 			<li class="menu-title">Coins</li>
 
 			<li class="with-sub">

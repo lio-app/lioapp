@@ -163,7 +163,7 @@ return [
         Illuminate\Validation\ValidationServiceProvider::class,
         Illuminate\View\ViewServiceProvider::class,
         Laravel\Passport\PassportServiceProvider::class,
-         PragmaRX\Google2FALaravel\ServiceProvider::class,
+        PragmaRX\Google2FALaravel\ServiceProvider::class,
 
         /*
          * Package Service Providers...
@@ -180,7 +180,7 @@ return [
         App\Providers\RouteServiceProvider::class,
         anlutro\LaravelSettings\ServiceProvider::class,
         PragmaRX\Google2FALaravel\ServiceProvider::class,
-
+        //LaravelFCM\FCMServiceProvider::class,
     ],
 
     /*
@@ -231,7 +231,8 @@ return [
         'View' => Illuminate\Support\Facades\View::class,
         'Setting' => anlutro\LaravelSettings\Facade::class,
         'Google2FA' => PragmaRX\Google2FALaravel\Facade::class,
-
+      //  'FCM'      => LaravelFCM\Facades\FCM::class,
+	     // 'FCMGroup' => LaravelFCM\Facades\FCMGroup::class, // Optional
     ],
 
 ];

@@ -83,7 +83,7 @@ return [
 		'password' => 'Password ',
 		'password_confirmation' => 'Password Confirmation',
 		'update_profile' => 'Update Profile',
-		
+
 
 	],
 	'account-manager' => [
@@ -93,7 +93,7 @@ return [
 		'update_account_manager' => 'Update Account Manager',
 		'account_manager' => 'Account Manager',
 		'add_new_account_manager' => 'Add New Account Manager',
-		
+
 	],
 	'auth' => [
 		'reset_password' => 'Reset Password',
@@ -218,12 +218,15 @@ return [
 		'payment_setting' => 'Payment Setting',
 		'setting' => 'Settings',
 		'site_setting' => 'Site Settings',
+		'news' => 'News',
+		'addnews' => 'Add News Item',
+		'lstnews' => 'List News',
 
  	],
-	
+
 	'pages' => [
 		'pages' => 'Pages',
-		
+
 	],
 	'payment' => [
 		'payment_history' => 'Payment History',
@@ -306,7 +309,7 @@ return [
 	'Payment_Mode' => 'Payment Mode',
 	'Payment_Status' => 'Payment Status',
 	'Request_Id' => 'Request Id',
-	'User_Name' => 'User Name',	
+	'User_Name' => 'User Name',
 	'Scheduled_Date_Time' => 'Scheduled Date & Time',
 	],
 	'review' => [
@@ -315,7 +318,7 @@ return [
 	'Comments' => 'Comments',
 	'Provider_Reviews' => 'Provider Reviews',
 	'User_Reviews' => 'User Reviews',
-		
+
 	],
 	'service' => [
 	'Add_Service_Type' => 'Add Service Type',
@@ -326,7 +329,7 @@ return [
 	'hourly_Price' => 'Hour Price',
 	'Base_Distance' => 'Base Distance',
 	'unit_time' => 'Unit Time Pricing (For Rental amount per hour / 60) ',
-	'unit' => 'Unit Distance Price',	
+	'unit' => 'Unit Distance Price',
 	'Seat_Capacity' => 'Seat Capacity',
 	'Pricing_Logic' => 'Pricing Logic',
 	'Description' => 'Description',
@@ -358,7 +361,7 @@ return [
 	'Update_User' => 'Update User',
 	'Users' => 'Users',
  	'Rating' => 'Rating',
- 	'Wallet_Amount' => 'Fiat Currency',	
+ 	'Wallet_Amount' => 'Fiat Currency',
  	'User_Details' => 'User Details',
  	'Wallet_Balance' => 'Wallet Balance',
  	'kyc_document' => 'Kyc Document',
@@ -390,5 +393,5 @@ return [
 		'Notification_History' => 'Notification History',
 		'Sent_on' => 'Sent on',
 	]
-	
+
 ];

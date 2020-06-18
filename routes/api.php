@@ -26,11 +26,10 @@ Route::post('/logout' , 'UserApiController@logout');
 Route::post('/verify' , 'UserApiController@verify');
 Route::post('/forgot/password', 'UserApiController@forgot_password');
 Route::post('/reset/password',  'UserApiController@reset_password');
-
 Route::group(['middleware' => ['auth:api']], function () {
-
+    Route::get('news' , 'UserApiController@newslist');
+    Route::get('news/{id}' , 'UserApiController@newsitem');
     Route::get('/index' , 'UserApiController@index');
-    
     Route::get('/privatekey' , 'UserApiController@privatekey');
     Route::post('/sendcoin' , 'UserApiController@sendcoin');
     Route::post('/sendcointest' , 'UserApiController@sendcointest');
@@ -60,4 +59,5 @@ Route::group(['middleware' => ['auth:api']], function () {
     //Route::post('/test/recive/transaction/mail', 'UserTestApiController@recive_mail');
 });
 Route::get('testtrans', 'UserApiController@testTransactions');
+
 Route::post('/test/recive/transaction/mail', 'UserTestApiController@recive_mail');

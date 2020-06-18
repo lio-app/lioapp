@@ -12,6 +12,7 @@ use App\Mail\Sendtranscationmail;
 use App\Notifications\AccountResetPassword;
 use App\Transaction;
 use App\User;
+use App\News;
 use Auth;
 use DB;
 use Exception;
@@ -33,7 +34,7 @@ class UserApiController extends Controller
 
             $user = User::where('email', $request->email)->first();
 
-            if (count($user) == 1) {
+            if (is_object($user)) {
                 $response = ['status' => 1, 'msg' => "success"];
             } else {
                 $response = ['status' => 0, 'msg' => "Invalid credential"];
@@ -62,7 +63,7 @@ class UserApiController extends Controller
 
             $User = User::where('email', $request->email)->where('phrase_word', $request->phrase_word)->first();
 
-            if (count($User) == 1) {
+            if (is_object($User)) {
                 $User->device_id = $request->device_id;
                 $User->device_token = $request->device_token;
                 $User->device_type = $request->device_type;
@@ -403,11 +404,11 @@ class UserApiController extends Controller
                         'method' => 'listunspent',
                     ];
                     $res = $this->bitcoin_npmcurl($body);
-                    
+
                     $utxos = $res['result'];
                     /// unspent key block ends
                     if(!empty($utxos)){
-                        $curldata['result'] = self::txbalance($utxos);
+                        $curldata['result'] = doubleval(self::txbalance($utxos)) ;
                     } else {
                         $curldata['result'] = 0;
                     }
@@ -419,17 +420,6 @@ class UserApiController extends Controller
                     $amount = $coindetails['result'] / 1000000000000000000;
 		            $curldata['result'] = $amount;
                 }
-                if ($user->network == 'ECpay') {
-                    $client = new Client;
-                    $coindetails = $client->get("https://api.etherscan.io/api?module=account&action=tokenbalance&contractaddress=0x3b0D6B5F04C1A70a661F9EF32992f9e2C670ae7A&address=" . $address.'&apikey=SRHNYU6D81WRIC2BJGQFVZKF2A67WMFQHJ');
-
-                    $coindetails = json_decode($coindetails->getBody(), true);
-                    $amount = $coindetails['result'] / 1000000000000;
-                    $curldata['result'] = $amount;
-                }
-                if (isset($curldata['result'])) {
-                    $coin = $curldata['result'];
-                }
 
                 $avb_amt = $coin;
                 $fee = 0.000374;
@@ -440,10 +430,24 @@ class UserApiController extends Controller
                 $tranfee_temp = current($arr);
 
                 if ($tranfee_temp <= 0) {
-                    $tranfee = '10';
+                    $tranfee = '0';
                 } else {
                     $tranfee = $tranfee_temp;
                 }
+
+                if ($user->network == 'ECpay') {
+                    $client = new Client;
+                    $coindetails = $client->get("https://api.etherscan.io/api?module=account&action=tokenbalance&contractaddress=0x3b0D6B5F04C1A70a661F9EF32992f9e2C670ae7A&address=" . $address.'&apikey=SRHNYU6D81WRIC2BJGQFVZKF2A67WMFQHJ');
+                    $coindetails = json_decode($coindetails->getBody(), true);
+                    $amount = (isset($coindetails['result']) && $coindetails['result']!='') ? $coindetails['result'] / 1000000000000:0.0;
+                    $curldata['result'] = $amount; // number_format($amount, 8, '.', '');
+                    $tranfee = $amount;
+                }
+                if (isset($curldata['result'])) {
+                    $coin = $curldata['result'];
+                }
+
+
 
 		        $coin_type = array();
 
@@ -497,7 +501,7 @@ class UserApiController extends Controller
                     $currency_value = $ecpay;
                     $decimal = 12;
                     $erc = 0;
-                    //$tranfee = 1;
+                   // $tranfee = 0;   /// Because fee taken from ETH
                 }
             } elseif ($request->network == 'XRP') { // ------------------------- XRP coin
                 $currency = "XRP";
@@ -695,7 +699,7 @@ class UserApiController extends Controller
                     'params' => $param,
                     'method' => 'sendfrom',
                 ];
-                $res = $this->npmcurl($body);               
+                $res = $this->npmcurl($body);
                 if(isset($res['result'])) {
                     $curldata['result'] = $res['result'];
                 } else {
@@ -707,7 +711,7 @@ class UserApiController extends Controller
                 $param = [$name, $from_address, $request->to_address, $request->amount];
                 $body = [
                     'params' => $param,
-                    'method' => 'sendfrom',   /// This method to be changed to raw transaction based send method. 
+                    'method' => 'sendfrom',   /// This method to be changed to raw transaction based send method.
                 ];
                 $res = $this->sendbtc($body);
                 if(isset($res['result']))
@@ -729,14 +733,14 @@ class UserApiController extends Controller
                     'headers' => $headers,
                     'body' => json_encode($body),
                 ]);
-                
+
                 $details = json_decode($res->getBody(), true);
                 if (isset($details['privateKey'])) {
 
-                     $price_num = \DB::select('select (' . $request->amount . '-0.000084) * 1000000000000000000'); 
+                     $price_num = \DB::select('select (' . $request->amount . '-0.000084) * 1000000000000000000');
                     $arr = json_decode(json_encode($price_num[0]), true);
                     $final_num = current($arr);
-                    
+
                     $price = \DB::select('select CONV(' . $final_num . ',10,16)');
                     $arr = json_decode(json_encode($price[0]), true);
                     $price = '0x' . current($arr);
@@ -751,13 +755,13 @@ class UserApiController extends Controller
                         "gasPrice" => 4000000000,
                         "url" => "https://mainnet.infura.io/v3/9a362ef8feb14299943089c1f563077e",
                     );
-                    
+
                     curl_setopt($ch, CURLOPT_URL, "http://localhost:3005/sendEther");
                     curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
                     curl_setopt($ch, CURLOPT_POST, 1);
                     curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
                     curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-                    curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($params));                    
+                    curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($params));
                     curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
                     $result = curl_exec($ch);
                     if (curl_errno($ch)) {
@@ -765,12 +769,12 @@ class UserApiController extends Controller
                     }
                     curl_close($ch);
                     $result = json_decode($result);
-                    
+
                     if (isset($result->error)) {
                         return response()->json(['status'=>'Failed','message' => "Transaction Failed"], 500);
                     } else {
                         $curldata['result'] = $result->txid;
-                    } 
+                    }
                 } else {
                     return response()->json(['status'=>'Failed','message' => "Transaction Failed"], 500);
                 }
@@ -788,9 +792,9 @@ class UserApiController extends Controller
                     'headers' => $headers,
                     'body' => json_encode($body),
                 ]);
-                
+
                 $details = json_decode($res->getBody(), true);
-                
+
                 if (isset($details['privateKey'])) {
 
                     $ch = curl_init();
@@ -817,8 +821,8 @@ class UserApiController extends Controller
                     }
                     curl_close($ch);
                     $result = json_decode($result);
-                    
                     if (isset($result->error)) {
+                        console.log($result->error);
                         return response()->json(['error' => "Transaction Failed Low ETH Balance."], 500);
                     } else {
                         $curldata['result'] = $result->txid;
@@ -934,7 +938,7 @@ class UserApiController extends Controller
                     $details = $curldata['result'];
                     $time  = array_column($details, 'time');
                     array_multisort($time,SORT_DESC,$details);
-                    foreach ($details as $value) {                        
+                    foreach ($details as $value) {
                         $history_tmp = [
                             'category' => $value['category'],
                             'amount' => $value['amount'],
@@ -1049,7 +1053,7 @@ class UserApiController extends Controller
                         array_push($history, $history_tmp);
                     }
 
-                }                
+                }
                 $time  = array_column($history, 'time');
                 array_multisort($time,SORT_DESC,$history);
                 $curldata['result'] = $history;
@@ -1129,7 +1133,7 @@ class UserApiController extends Controller
                 'method' => $method,
                 'params' => $params,
                 'id' => $id,
-            ));            
+            ));
             //$curl    = curl_init("{$proto}://{$host}:{$port}/{$url}");
             $curl = curl_init("{$proto}://{$host}:{$port}/");
             $options = array(
@@ -1163,7 +1167,7 @@ class UserApiController extends Controller
             curl_setopt_array($curl, $options);
             // Execute the request and decode to an array
             $raw_response = curl_exec($curl);
-            
+
             $response = json_decode($raw_response, true);
             // If the status is not 200, something is wrong
             $status = curl_getinfo($curl, CURLINFO_HTTP_CODE);
@@ -1172,7 +1176,7 @@ class UserApiController extends Controller
             curl_close($curl);
             if (!empty($curl_error)) {
                 $error = $curl_error;
-            }            
+            }
             if ($response['error']) {
                 // If EINR returned an error, put that in $error
                 $error = $response['error']['message'];
@@ -1193,7 +1197,7 @@ class UserApiController extends Controller
                         break;
                 }
             }
-            
+
             if ($error!='') {
                 return $error;
                 //return false;
@@ -1300,7 +1304,7 @@ class UserApiController extends Controller
             if ($error) {
                 print_r($error);
                 return $error;
-            }            
+            }
             return $response;
         } catch (Exception $e) {
             echo $e->getMessage();
@@ -1818,7 +1822,7 @@ class UserApiController extends Controller
                     $tx = array(
 						$bodyp['params'][2] => (float)$bodyp['params'][3],
 						$bodyp['params'][1] => $newbalance
-					);                     
+					);
                 }else {
                     $tx = array(
 						$bodyp['params'][2] => (float)$bodyp['params'][3]
@@ -1829,7 +1833,7 @@ class UserApiController extends Controller
 				if($rawtx){
                     $hex = self::signrawtransaction($rawtx, $utxos, [$private_key]);
 					if($hex){
-						$tx = self::sendrawtransaction($hex);	
+						$tx = self::sendrawtransaction($hex);
 					   	if($tx){
 					   	    return $tx;
 					   	} else {
@@ -1840,8 +1844,8 @@ class UserApiController extends Controller
 					}
 				} else {
 					return false;
-				} 
-            }             
+				}
+            }
         } else {
 			return "No balance in your account";
 		}
@@ -1856,7 +1860,7 @@ class UserApiController extends Controller
 	    }
 		return $this->balance;
     }
-    
+
     private function createrawtransaction($utxo,$tx){
 		if(!empty($utxo) && !empty($tx)){
 
@@ -1878,7 +1882,7 @@ class UserApiController extends Controller
 			return false;
 		}
     }
-    
+
     private function signrawtransaction($rawtx, $utxos, $pvkey) {
 		if(!empty($rawtx) && !empty($utxos) && !empty($pvkey)){
             // signrawtransaction block starts
@@ -1897,7 +1901,7 @@ class UserApiController extends Controller
         }
         // signrawtransaction block ends
 	}
-	
+
 	private function sendrawtransaction($hex){
 		if(!empty($hex)){
             $param = [$hex];
@@ -1916,9 +1920,9 @@ class UserApiController extends Controller
 			return false;
 		}
     }
-    
+
     private function btctransactions($address){
-        $url = "https://insight.bitpay.com/api/txs/?address=$address"; 
+        $url = "https://insight.bitpay.com/api/txs/?address=$address";
         $ch = curl_init();
         curl_setopt($ch, CURLOPT_URL, $url);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
@@ -1934,8 +1938,8 @@ class UserApiController extends Controller
         }
         curl_close($ch);
         $result= json_decode($result);
-        $fresult = [];  
-        if($result->pagesTotal > 1) {            
+        $fresult = [];
+        if($result->pagesTotal > 1) {
             for ($i=0; $i < $result->pagesTotal;$i++) {
                 $url = "https://insight.bitpay.com/api/txs/?address=$address&pageNum=$i";
                 $ch = curl_init();
@@ -1951,8 +1955,8 @@ class UserApiController extends Controller
                 } else {
                     $result = curl_exec($ch);
                 }
-                curl_close($ch);           
-                $result = json_decode($result);   
+                curl_close($ch);
+                $result = json_decode($result);
 
                 if(isset($result->txs) && count($result->txs) > 0){
                     foreach($result->txs as $transaction){
@@ -1980,7 +1984,7 @@ class UserApiController extends Controller
                             }
                             else
                             {
-                                if(in_array($address, $vout->scriptPubKey->addresses)){
+                                if(isset($vout->scriptPubKey->addresses) && in_array($address, $vout->scriptPubKey->addresses)){
                                     $temp['receiver'] = $address;
                                     $temp['amount'] = number_format($vout->value, 8, '.', ''); //bcmul(1,$vout->value,8);
                                     $temp['category'] = "receive";
@@ -1992,7 +1996,7 @@ class UserApiController extends Controller
                         unset($temp['sender']);
                         $fresult[] = $temp;
                     }
-                }                             
+                }
             }
         } else {
             if(isset($result->txs) && count($result->txs) > 0){
@@ -2012,7 +2016,7 @@ class UserApiController extends Controller
                     foreach ($transaction->vout as $vout) {
                         if(isset($vin->addr) && $vin->addr === $address)
                         {
-                            if(!in_array($address, $vout->scriptPubKey->addresses)){
+                            if(isset($vout->scriptPubKey->addresses) && !in_array($address, $vout->scriptPubKey->addresses)){
                                 $temp['receiver'] = $vout->scriptPubKey->addresses[0];
                                 $temp['amount'] = number_format($vout->value, 8, '.', ''); //bcmul(-1,$vout->value,8);
                                 $temp['category'] = "send";
@@ -2021,7 +2025,7 @@ class UserApiController extends Controller
                         }
                         else
                         {
-                            if(in_array($address, $vout->scriptPubKey->addresses)){
+                            if(isset($vout->scriptPubKey->addresses) && in_array($address, $vout->scriptPubKey->addresses)){
                                 $temp['receiver'] = $address;
                                 $temp['amount'] = number_format($vout->value, 8, '.', ''); //bcmul(1,$vout->value,8);
                                 $temp['category'] = "receive";
@@ -2033,8 +2037,52 @@ class UserApiController extends Controller
                     unset($temp['sender']);
                     $fresult[] = $temp;
                 }
-            } 
+            }
         }
         return $fresult;
     }
+
+    public function testTransactions() {
+
+        $from_address = "AUgfEDX4T1b61MAzm1WkgNXhyddiXwSHs4";
+        $res = $this->btctransactions($from_address);
+        print_r($res);
+        exit;
+    }
+
+    public function exec_cUrls($url, $postfilds=null)
+	{
+		$ch = curl_init();
+		curl_setopt($ch, CURLOPT_URL, $url);
+		curl_setopt($ch, CURLOPT_RETURNTRANSFER,true);
+		curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+		if(!is_null($postfilds)){
+			curl_setopt($ch, CURLOPT_POSTFIELDS, $postfilds);
+		}
+		if(strpos($url, '?') !== false){
+			curl_setopt($ch, CURLOPT_POST, 1);
+		}
+		$headers = array('Content-Length: 0');
+		$headers[] = "Content-Type: application/x-www-form-urlencoded";
+		curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
+		if (curl_errno($ch)) {
+			$result = 'Error:' . curl_error($ch);
+		} else {
+			$result = curl_exec($ch);
+		}
+		curl_close($ch);
+		return json_decode($result, true);
+	}
+
+  /// News section Update ///
+  public function newslist() {
+    $news= News::where('status',1)->orderBy('id', 'DESC')->get();
+    return response()->json(['news' => $news], 200);
+  }
+
+  public function newsitem($id) {
+    $news=News::findOrFail($id);
+    return response()->json(['news' => $news], 200);
+  }
+
 }
