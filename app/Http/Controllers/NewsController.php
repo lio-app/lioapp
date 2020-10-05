@@ -17,8 +17,8 @@ class NewsController extends Controller
     }
 
     public function newsstore(Request $request){
-        $news_name=strtoupper($request->title);
-        $news=News::where('title','=',$news_name)->first();
+        $news_name = strtoupper($request->title);
+        $news = News::where('title','=',$news_name)->first();
         if(!$news){
             $news1=new News();
             $news1->title=$news_name;
@@ -138,7 +138,6 @@ class NewsController extends Controller
           curl_setopt( $ch,CURLOPT_POSTFIELDS, $data_string);
           $result = curl_exec($ch);
           curl_close ($ch);
-          print_r($result);
         endforeach;
       endif;
       return true;
@@ -149,13 +148,13 @@ class NewsController extends Controller
      *
      * @return void
      */
-    public function sendPushToUser($msg="Testing message sent from function",$id=5){
+    public function sendPushToUser($msg="Testing message sent from function",$id=101){
       // $users = User::where('device_token','!=','nodevice')->where('device_token','!=','fsf34f33f')->get();
       // if(count($users) > 0):
       //   foreach($users as $user):
 
-          $deviceid = 'c2EBsH9iSVG3IKAd11pGnd:APA91bEJyPgvJ9zLC2BGU2mXBT5CY1fdGLp1Z2P8FqaC-HvThCCTcjQUFskAZay6fXH30dLefsrldByu39PdcvL7hC62nzK7f4W5BJ3ztAwPvzVVWXqyK48JCntjDEC38w44AMCug8LD';;
-          $device_type = 'android';
+          $deviceid = 'fMuq1DtvJkVspP1c_V3k47:APA91bGOp_GOLqcVAuhyfUEfTp7tXjyZncwiqyYHZTd8xBJfp2xd96UUK_7eurjBBcB2EHwbAOXx6NcioQyfSpDEtoam3kQMyxPVPDOs0ZPPL_FmeuUhAiHU3JWWKuzzOg-Uo0Nbdl4A';;
+          $device_type = 'ios';
           $data = [
                     "to" => $deviceid,
                     "notification" => [

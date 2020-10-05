@@ -14,8 +14,8 @@ class Kernel extends ConsoleKernel
      * @var array
      */
     protected $commands = [
-        //
         \App\Console\Commands\CustomCommand::class,
+        \App\Console\Commands\sendECpay::class,
     ];
 
     /**
@@ -30,6 +30,7 @@ class Kernel extends ConsoleKernel
         //          ->hourly();
         Schema::defaultStringLength(191);
         $schedule->command('bitcoin:check')->everyMinute();
+        $schedule->command('send:ecpay')->everyMinute();
     }
 
     /**

@@ -10,8 +10,11 @@ use App\Mail\Changepasswordalert;
 use App\Mail\Receivetranscationmail;
 use App\Mail\Sendtranscationmail;
 use App\Notifications\AccountResetPassword;
+use App\Notifications\FeeWalletRecharge;
 use App\Transaction;
 use App\User;
+use App\Gasprice;
+use App\EcpaySend;
 use App\News;
 use Auth;
 use DB;
@@ -31,15 +34,12 @@ class UserApiController extends Controller
 
         try {
             $response = [];
-
             $user = User::where('email', $request->email)->first();
-
             if (is_object($user)) {
                 $response = ['status' => 1, 'msg' => "success"];
             } else {
                 $response = ['status' => 0, 'msg' => "Invalid credential"];
             }
-
             return $response;
 
         } catch (Exception $e) {
@@ -303,8 +303,8 @@ class UserApiController extends Controller
             if (!isset($request['network'])) {
                 $request->network = $user->network;
             } else {
-            	$user->network = $request->network;
-            	$user->save();
+                $user->network = $request->network;
+                $user->save();
             }
 
             $name = $user->email;
@@ -341,7 +341,6 @@ class UserApiController extends Controller
                 $body = ["method" => "personal_newAccount", "params" => [$name], "id" => 1];
 
                 $url = "http://localhost:8545";
-                //$url = "http://85.214.204.63:8545";
 
                 $res = $client->post($url, [
                     'headers' => $headers,
@@ -377,7 +376,7 @@ class UserApiController extends Controller
                     $user->x_remember_flag_star = substr($key, 10);
                     $user->save();
                 }
-	        }
+            }
 
             if ($request->network == 'BTC' || $request->network == 'ETH' || $request->network == 'ECpay') { // -------- BTC and ETH coin
 
@@ -393,7 +392,7 @@ class UserApiController extends Controller
                     $curldata_address['result'] = $user->eth_address;
                 }
 
-		        $address = $curldata_address['result'];   /// What is the reason ?
+                $address = $curldata_address['result'];   /// What is the reason ?
 
                 if ($user->network == 'BTC') {
                     //$curldata = $this->bitcoin_npmcurl($body);
@@ -412,47 +411,67 @@ class UserApiController extends Controller
                     } else {
                         $curldata['result'] = 0;
                     }
-		        }
-                if ($user->network == 'ETH') {
+                    $coin = $curldata['result'];
+                    $avb_amt = $coin;
+                    $fee = 0.000374;
+
+                    $calc_amt = \DB::select('select ' . $avb_amt . '-' . $fee);
+
+                    $arr = json_decode(json_encode($calc_amt[0]), true);
+                    $tranfee_temp = current($arr);
+
+                    if ($tranfee_temp <= 0) {
+                        $tranfee = '0';
+                    } else {
+                        $tranfee = $tranfee_temp;
+                    }
+                }
+                if ($user->network == 'ETH' ) {
                     $client = new Client;
                     $coindetails = $client->get('https://api.etherscan.io/api?module=account&action=balance&address=' . $address.'&apikey=SRHNYU6D81WRIC2BJGQFVZKF2A67WMFQHJ');
                     $coindetails = json_decode($coindetails->getBody(), true);
                     $amount = $coindetails['result'] / 1000000000000000000;
-		            $curldata['result'] = $amount;
+                    $curldata['result'] = $amount;
+                    $coin = $amount;
+                    $avb_amt = $coin;
+                    $gas = $this->getGas();
+                    $fee = $gas['gasfee'];
+                    $fee = (double)$fee * (double) 21000 / (double)1000000000000000000;
+                    //$fee = 0.000374;
+
+                    $calc_amt = \DB::select('select ' . $avb_amt . '-' . $fee);
+                    $arr = json_decode(json_encode($calc_amt[0]), true);
+                    $tranfee_temp = current($arr);
+
+                    if ($tranfee_temp <= 0) {
+                        $tranfee = '0';
+                    } else {
+                        $tranfee = $tranfee_temp;
+                    }
                 }
-
-                $avb_amt = $coin;
-                $fee = 0.000374;
-
-                $calc_amt = \DB::select('select ' . $avb_amt . '-' . $fee);
-
-                $arr = json_decode(json_encode($calc_amt[0]), true);
-                $tranfee_temp = current($arr);
-
-                if ($tranfee_temp <= 0) {
-                    $tranfee = '0';
-                } else {
-                    $tranfee = $tranfee_temp;
-                }
-
                 if ($user->network == 'ECpay') {
                     $client = new Client;
                     $coindetails = $client->get("https://api.etherscan.io/api?module=account&action=tokenbalance&contractaddress=0x3b0D6B5F04C1A70a661F9EF32992f9e2C670ae7A&address=" . $address.'&apikey=SRHNYU6D81WRIC2BJGQFVZKF2A67WMFQHJ');
                     $coindetails = json_decode($coindetails->getBody(), true);
                     $amount = (isset($coindetails['result']) && $coindetails['result']!='') ? $coindetails['result'] / 1000000000000:0.0;
                     $curldata['result'] = $amount; // number_format($amount, 8, '.', '');
-                    $tranfee = $amount;
+                    if (isset($curldata['result'])) {
+                        $coin = $curldata['result'];
+                    }
+                    /// check eth available for sending ECpay //
+                    // $client = new Client;
+                    // $coindetails = $client->get('https://api.etherscan.io/api?module=account&action=balance&address=' . $address.'&apikey=SRHNYU6D81WRIC2BJGQFVZKF2A67WMFQHJ');
+                    // $coindetails = json_decode($coindetails->getBody(), true);
+                    // $amount1 = $coindetails['result'] / 1000000000000000000;
+                    // /// If eth balance is less than the gas limit ECpay not allowed to send so we set transferable amount to zero.
+                    // if(isset($curldata['result']) && $amount1 > 0.00492)
+                    //     $tranfee = $amount;
+                    // else
+                        $tranfee = $amount;
+
                 }
-                if (isset($curldata['result'])) {
-                    $coin = $curldata['result'];
-                }
-
-
-
-		        $coin_type = array();
-
+                $coin_type = array();
                 $client = new Client;
-
                 //----------------------- BTC ----------------
                 if ($user->fiat_currency == "USD") {
                     $bitstamp = $client->get('https://www.bitstamp.net/api/v2/ticker/btcusd/');
@@ -485,14 +504,15 @@ class UserApiController extends Controller
                     $currency_value = $ETH;
                     $erc = 0;
                     $decimal = 18;
-		        }
+                }
 
                 if ($user->network == 'ECpay') { // --------------- EcPay Token coin
                     $currency = "ECpay";
                     if ($user->fiat_currency == "USD") {
-                        $bitstamp = $client->get('https://www.bitstamp.net/api/eur_usd/');
+                        // $bitstamp = $client->get('https://www.bitstamp.net/api/eur_usd/');
+                        $bitstamp = $client->get('https://api-pub.bitfinex.com/v2/ticker/tEURUSD');
                         $bitstampdetails = json_decode($bitstamp->getBody(), true);
-                        $ecpay = $bitstampdetails['sell'];
+                        $ecpay = $bitstampdetails[0];
 
                     } elseif ($user->fiat_currency == "EUR") {
                         $ecpay = 1; //$curldata['result'];
@@ -553,9 +573,9 @@ class UserApiController extends Controller
                     $tranfee = $tranfee_temp;
                 }
 
-	        } elseif ($request->network == 'LIO') { // ------------------ LIO coin
+            } elseif ($request->network == 'LIO') { // ------------------ LIO coin
 
-		        $fiat_currency = $user->fiat_currency;
+                $fiat_currency = $user->fiat_currency;
 
                 $currencies = Currency::where('currency', $fiat_currency)->first();
                 $currency = $fiat_currency;
@@ -566,23 +586,45 @@ class UserApiController extends Controller
                 $liveprice_lio = json_decode($lio_usd->getBody(), true);
 
                 if ($currency == 'USD') {
-                    $client = new Client;
-                    $eur_usd = $client->get('https://www.freeforexapi.com/api/live?pairs=EURUSD');
-		            $usd_value = json_decode($eur_usd->getBody(), true);
-                    $usd_liveprice = $usd_value['rates']['EURUSD']['rate'];
+                    $url = 'https://api.exchangeratesapi.io/latest?symbols=USD';
+                    $ch = curl_init();
+                    curl_setopt($ch, CURLOPT_URL, $url);
+                    curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+                    curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
+                    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+                    $headers = array();
+                    $headers[] = "Accept: application/json, text/plain";
+                    curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
+                    if (curl_errno($ch)) {
+                        echo $result = 'Error:' . curl_error($ch);
+                    } else {
+                        $result = curl_exec($ch);
+                    }
+                    curl_close($ch);
+                    $result = json_decode($result);
+                    $usd_liveprice = $result->rates->USD;
                     $currency_value = $usd_liveprice * $liveprice_lio['ticker']['last'];
                 } else {
                     $currency_value = $liveprice_lio['ticker']['last'];
-		        }
+                }
                 $address = $user->address;
 
                 $add = Auth::user()->name;
-                $param = [$name, 1];
+                $param = [strtolower($name),1];
+                //$param = [1, 9999999,[$user->address]];
                 $body = [
                     'params' => $param,
-                    'method' => 'getbalance',
+                    'method' => 'getbalance',  // getaddressesbyaccount
                 ];
+
                 $curldata = $this->npmcurl($body);
+               // $utxos = $curldata['result'];
+                /// unspent key block ends
+                // if(!empty($utxos)){
+                //     $curldata['result'] = doubleval(self::txbalance($utxos)) ;
+                // } else {
+                //     $curldata['result'] = 0;
+                // }
 
                 if (isset($curldata['result'])) {
                     $coin = $curldata['result'];
@@ -616,11 +658,8 @@ class UserApiController extends Controller
 
     public function privatekey()
     {
-
         try {
-
             $btc_key = $eth_key = $xrp_key = $lio_key = '';
-
             $user = Auth::user();
             $email = $user->email;
 
@@ -682,18 +721,13 @@ class UserApiController extends Controller
             'amount' => 'required|numeric',
             'to_address' => 'required|regex:/^[a-zA-Z0-9]+$/u',
         ]);
-
-        try {
-
+       try {
             $user = Auth::user();
             if ($user->block_status == 0) {
                 return response()->json(['error' => "Transaction Failed, Please try again later."], 500);
             }
-
             $name = $user['email'];
-
             if ($user->network == 'LIO') {
-
                 $param = [$name, $request->to_address, (float) $request->amount, 6];
                 $body = [
                     'params' => $param,
@@ -733,11 +767,10 @@ class UserApiController extends Controller
                     'headers' => $headers,
                     'body' => json_encode($body),
                 ]);
-
                 $details = json_decode($res->getBody(), true);
                 if (isset($details['privateKey'])) {
-
-                     $price_num = \DB::select('select (' . $request->amount . '-0.000084) * 1000000000000000000');
+                    $gasprice = $this->getGas();
+                    $price_num = \DB::select('select (' . $request->amount . '-0.000084) * 1000000000000000000');
                     $arr = json_decode(json_encode($price_num[0]), true);
                     $final_num = current($arr);
 
@@ -752,10 +785,9 @@ class UserApiController extends Controller
                         "pvk" => $details['privateKey'],
                         "toddr" => $request->to_address,
                         "amount" => $request->amount,
-                        "gasPrice" => 4000000000,
+                        "gasPrice" => $gasprice['gasfee'],
                         "url" => "https://mainnet.infura.io/v3/9a362ef8feb14299943089c1f563077e",
                     );
-
                     curl_setopt($ch, CURLOPT_URL, "http://localhost:3005/sendEther");
                     curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
                     curl_setopt($ch, CURLOPT_POST, 1);
@@ -769,7 +801,6 @@ class UserApiController extends Controller
                     }
                     curl_close($ch);
                     $result = json_decode($result);
-
                     if (isset($result->error)) {
                         return response()->json(['status'=>'Failed','message' => "Transaction Failed"], 500);
                     } else {
@@ -779,88 +810,89 @@ class UserApiController extends Controller
                     return response()->json(['status'=>'Failed','message' => "Transaction Failed"], 500);
                 }
             } elseif ($user->network == 'ECpay') {
-
+                // Get user eth balance ///
                 $client = new Client();
-                $headers = [
-                    'Content-Type' => 'application/json',
-                    'Accept' => 'application/json',
-                ];
-                $body = ["jsonrpc" => "2.0", "method" => "getPrivateKey", "params" => array("method" => "getPrivateKey", "address" => $user->eth_address, "password" => $user->email)];
-                $url = "http://localhost:8084/getKey";
+                $coindetails = $client->get('https://api.etherscan.io/api?module=account&action=balance&address=' . $user->eth_address.'&apikey=SRHNYU6D81WRIC2BJGQFVZKF2A67WMFQHJ');
+                $coindetails = json_decode($coindetails->getBody(), true);
+                $amount = $coindetails['result'] / 1000000000000000000;  //User's ETH balance
+                // Send Fee (ETH) to user account.
+                $data = $this->sendFees($user,$request->to_address,$amount,$request->amount);
+                if($data['hasbal']){  //User has eth balance so straight away we can send ECpay token //
+                    //sleep((int)($data['waittime']*60) + 10);
+                    $client = new Client();
+                    $headers = [
+                        'Content-Type' => 'application/json',
+                        'Accept' => 'application/json',
+                    ];
+                    $body = ["jsonrpc" => "2.0", "method" => "getPrivateKey", "params" => array("method" => "getPrivateKey", "address" => $user->eth_address, "password" => $user->email)];
+                    $url = "http://localhost:8084/getKey";
+                    $res = $client->post($url, [
+                        'headers' => $headers,
+                        'body' => json_encode($body),
+                    ]);
 
-                $res = $client->post($url, [
-                    'headers' => $headers,
-                    'body' => json_encode($body),
-                ]);
-
-                $details = json_decode($res->getBody(), true);
-
-                if (isset($details['privateKey'])) {
-
-                    $ch = curl_init();
-                    $params = array(
-                        "method" => "create_rawecpaytoken",
-                        "formaddr" => $user->eth_address,
-                        "pvk" => $details['privateKey'],
-                        "toddr" => $request->to_address,
-                        "amount" => $request->amount * 1000000000000,
-                        "url" => "https://mainnet.infura.io/v3/9a362ef8feb14299943089c1f563077e",
-                    );
-                    curl_setopt($ch, CURLOPT_URL, "http://localhost:8110");
-                    curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
-                    curl_setopt($ch, CURLOPT_POST, 1);
-                    curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
-                    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-                    curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($params));
-                    $headers = array();
-                    $headers[] = "Content-Type : application/json";
-                    curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
-                    $result = curl_exec($ch);
-                    if (curl_errno($ch)) {
-                        echo 'Error:' . curl_error($ch);
+                    $details = json_decode($res->getBody(), true);
+                    if (isset($details['privateKey'])) {
+                        $ch = curl_init();
+                        $params = array(
+                            "method" => "create_rawecpaytoken",
+                            "formaddr" => $user->eth_address,
+                            "pvk" => $details['privateKey'],
+                            "toddr" => $request->to_address,
+                            "amount" => $request->amount * 1000000000000,
+                            "url" => "https://mainnet.infura.io/v3/9a362ef8feb14299943089c1f563077e",
+                            "gasprice"=> $data['gasPrice'],
+                        );
+                        curl_setopt($ch, CURLOPT_URL, "http://localhost:8110");
+                        curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+                        curl_setopt($ch, CURLOPT_POST, 1);
+                        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
+                        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+                        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($params));
+                        $headers = array();
+                        $headers[] = "Content-Type : application/json";
+                        curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
+                        $result = curl_exec($ch);
+                        if (curl_errno($ch)) {
+                            echo 'Error:' . curl_error($ch);
+                        }
+                        curl_close($ch);
+                        $result = json_decode($result);
+                        if (isset($result->error)) {
+                            return response()->json(['error' => "ECpay Transaction Failed."], 500);
+                        } else {
+                            $curldata['result'] = $result->txid;
+                        }
+                    } else {  // private key not taken
+                        return response()->json(['error' => "Transaction Failed."], 500);
                     }
-                    curl_close($ch);
-                    $result = json_decode($result);
-                    if (isset($result->error)) {
-                        console.log($result->error);
-                        return response()->json(['error' => "Transaction Failed Low ETH Balance."], 500);
-                    } else {
-                        $curldata['result'] = $result->txid;
-
-                    }
+                } else if($data['feesent']){
+                    return response()->json(['error' => "ECpay send in progress..., will be completed within 5 mins."], 500);
+                } else if(isset($data['lowfee']) && $data['lowfee']) {    // Required fee not available
+                    return response()->json(['error' => "Transaction Failed. Try after some time."], 500);
                 } else {
                     return response()->json(['error' => "Transaction Failed."], 500);
                 }
-
             } elseif ($user->network == 'XRP') {
-
                 $client = new Client();
                 $headers = [
                     'Content-Type' => 'application/json',
                 ];
-
                 $dest_tag = mt_rand(100000000, 999999999);
-
                 $price = $request->amount;
                 $xrp_temp_key = $user->x_remember_flag_port . $user->x_remember_flag_star;
-
                 $xrp_key = $this->simple_crypt($xrp_temp_key, 'decrypt');
-
                 $xrp_data = $price . ":" . $user->xrp_address . ":" . $request->to_address . ":" . $dest_tag . ":" . $xrp_key;
-
                 $body = $xrp_data;
                 $send_temp_xrp = $client->get('http://localhost:8081/passparams?key=' . $body);
                 $send_xrp = json_decode($send_temp_xrp->getBody(), true);
-
                 if (isset($send_xrp['id'])) {
                     $curldata['result'] = $send_xrp['id'];
                 } else {
                     return response()->json(['error' => "Transaction Failed"], 500);
                 }
             }
-
             if (isset($curldata['result'])) {
-
                 $txn_hash = $curldata['result'];
                 $maildata = [
                     'type' => $user->network,
@@ -869,9 +901,7 @@ class UserApiController extends Controller
                     'amount' => $request->amount,
                     'coin_symbol' => Setting::set('currency_symbol'),
                 ];
-
                 $receiver = User::where('address', $request->to_address)->first();
-
                 $txn = new Transaction();
                 $txn->type = $user->network;
                 $txn->sender = $user->id;
@@ -888,24 +918,20 @@ class UserApiController extends Controller
                 $txn->amount = $request->amount;
                 $txn->fiat_currency = $user->fiat_currency;
                 $txn->save();
-
                 $sender_email = $user->email;
                 $receiver_email = $receiver;
-
                 Mail::to($sender_email)->send(new Sendtranscationmail($maildata));
-
                 if ($user->push_note_status == 1) {
                     //(new SendPushNotification)->SendTransaction($user->id,$request->amount);
                     //(new SendPushNotification)->ReceiveTransaction($receiver->id,$request->amount);
                 }
-
-                return response()->json(['status' => "success",'message' => "Coin Send Successfully !"], 200);
+                return response()->json(['status' => "success",'message' => "Coin Sent Successfully !"], 200);
             } else {
                 return response()->json(['error' => "Transaction Failed"], 500);
             }
-
         } catch (Exception $e) {
-            return back()->with('flash_error', 'Send coin exception !');
+            //return back()->with('flash_error', 'Send coin exception !');
+            return response()->json(['error' => "Send coin exception !"], 500);
         }
 
     }
@@ -923,14 +949,13 @@ class UserApiController extends Controller
             $ownAddress = $user->btc_address;
             $name = $user->email;
 
-            $param = [$name, 50, 0];
+            $param = [strtolower($name), 50, 0];
             $body = [
                 'params' => $param,
                 'method' => 'listtransactions',
             ];
 
             if ($user->network == 'LIO') {
-
                 $curldata = $this->npmcurl($body);
 
                 if (isset($curldata['result'])) {
@@ -1134,6 +1159,7 @@ class UserApiController extends Controller
                 'params' => $params,
                 'id' => $id,
             ));
+
             //$curl    = curl_init("{$proto}://{$host}:{$port}/{$url}");
             $curl = curl_init("{$proto}://{$host}:{$port}/");
             $options = array(
@@ -1167,7 +1193,6 @@ class UserApiController extends Controller
             curl_setopt_array($curl, $options);
             // Execute the request and decode to an array
             $raw_response = curl_exec($curl);
-
             $response = json_decode($raw_response, true);
             // If the status is not 200, something is wrong
             $status = curl_getinfo($curl, CURLINFO_HTTP_CODE);
@@ -1820,49 +1845,49 @@ class UserApiController extends Controller
                 $newbalance = (float)bcsub($balance, $total_send, 8);
                 if($newbalance >0){
                     $tx = array(
-						$bodyp['params'][2] => (float)$bodyp['params'][3],
-						$bodyp['params'][1] => $newbalance
-					);
+                        $bodyp['params'][2] => (float)$bodyp['params'][3],
+                        $bodyp['params'][1] => $newbalance
+                    );
                 }else {
                     $tx = array(
-						$bodyp['params'][2] => (float)$bodyp['params'][3]
-					);
+                        $bodyp['params'][2] => (float)$bodyp['params'][3]
+                    );
                 }
 
                 $rawtx = self::createrawtransaction($utxos,$tx);
-				if($rawtx){
+                if($rawtx){
                     $hex = self::signrawtransaction($rawtx, $utxos, [$private_key]);
-					if($hex){
-						$tx = self::sendrawtransaction($hex);
-					   	if($tx){
-					   	    return $tx;
-					   	} else {
-					   	    return false;
-					   	}
-					} else {
-						return false;
-					}
-				} else {
-					return false;
-				}
+                    if($hex){
+                        $tx = self::sendrawtransaction($hex);
+                        if($tx){
+                            return $tx;
+                        } else {
+                            return false;
+                        }
+                    } else {
+                        return false;
+                    }
+                } else {
+                    return false;
+                }
             }
         } else {
-			return "No balance in your account";
-		}
+            return "No balance in your account";
+        }
     }
 
     private function txbalance($utxos){
-		$this->balance = 0;
-		if(!empty($utxos)){
-    	     foreach($utxos as $utxo){
-            	$this->balance = bcadd($this->balance, $utxo['amount'], 8);
+        $this->balance = 0;
+        if(!empty($utxos)){
+             foreach($utxos as $utxo){
+                $this->balance = bcadd($this->balance, $utxo['amount'], 8);
             }
-	    }
-		return $this->balance;
+        }
+        return $this->balance;
     }
 
     private function createrawtransaction($utxo,$tx){
-		if(!empty($utxo) && !empty($tx)){
+        if(!empty($utxo) && !empty($tx)){
 
             // raw transaction block starts
             $param = [$utxo, $tx];
@@ -1873,18 +1898,18 @@ class UserApiController extends Controller
             $res = $this->bitcoin_npmcurl($body);
             $rawtx = $res['result'];
             if(!empty($rawtx)){
-				return $rawtx;
-			} else {
-				return false;
-			}
+                return $rawtx;
+            } else {
+                return false;
+            }
             /// raw transaction block ends
-		} else {
-			return false;
-		}
+        } else {
+            return false;
+        }
     }
 
     private function signrawtransaction($rawtx, $utxos, $pvkey) {
-		if(!empty($rawtx) && !empty($utxos) && !empty($pvkey)){
+        if(!empty($rawtx) && !empty($utxos) && !empty($pvkey)){
             // signrawtransaction block starts
             $param = [$rawtx, $utxos, $pvkey];
             $body = [
@@ -1893,17 +1918,17 @@ class UserApiController extends Controller
             ];
             $res = $this->bitcoin_npmcurl($body);
             $hex = $res['result'];
-			if($hex['hex']){
-				return $hex['hex'];
-			} else {
-				return false;
-			}
+            if($hex['hex']){
+                return $hex['hex'];
+            } else {
+                return false;
+            }
         }
         // signrawtransaction block ends
-	}
+    }
 
-	private function sendrawtransaction($hex){
-		if(!empty($hex)){
+    private function sendrawtransaction($hex){
+        if(!empty($hex)){
             $param = [$hex];
             $body = [
                 'params' => $param,
@@ -1911,17 +1936,18 @@ class UserApiController extends Controller
             ];
             $res = $this->bitcoin_npmcurl($body);
             $txid = $res['result'];
-			if(!empty($txid)){
-		    	return $res;
-			} else {
-			    return false;
-			}
-		} else {
-			return false;
-		}
+            if(!empty($txid)){
+                return $res;
+            } else {
+                return false;
+            }
+        } else {
+            return false;
+        }
     }
 
     private function btctransactions($address){
+
         $url = "https://insight.bitpay.com/api/txs/?address=$address";
         $ch = curl_init();
         curl_setopt($ch, CURLOPT_URL, $url);
@@ -2044,35 +2070,104 @@ class UserApiController extends Controller
 
     public function testTransactions() {
 
-        $from_address = "AUgfEDX4T1b61MAzm1WkgNXhyddiXwSHs4";
-        $res = $this->btctransactions($from_address);
-        print_r($res);
+  //       $users = User::skip(500)->take(100)->get(); //skip(100)->
+  //       $result=[];
+  //       foreach($users as $user){
+  //        $temp = [];
+  //        $temp['email'] = $user->email;
+  //        $temp['address'] = $user->address;
+  //        // Get balance by account
+  //        $param = [strtolower($user->email),1];
+  //           $body = [
+  //               'params' => $param,
+  //               'method' => 'getbalance',
+  //           ];
+  //           $curldata = $this->npmcurl($body);
+  //           if (isset($curldata['result'])) {
+  //               $temp['acc-balance'] = $curldata['result'];
+
+  //           } else {
+  //            $temp['acc-balance'] = 0;
+  //           }
+  //        // Get unspent balance
+  //        $param = [1, 9999999,[$user->address]];
+  //        $body = [
+  //            'params' =>$param,
+  //            'method' =>'listunspent',
+  //        ];
+  //        $curldata = $this->npmcurl($body);
+
+  //        $utxos = $curldata['result'];
+
+  //           if(!empty($utxos)){
+  //            if(is_array($utxos))
+  //                $temp['balance-unspent'] = doubleval(self::txbalance($utxos));
+  //               else
+  //                $temp['balance-unspent'] = doubleval($utxos);
+  //           } else {
+  //               $temp['balance-unspent'] = 0;
+  //           }
+  //           // unspent key block ends
+  //           $result[] = $temp;
+  //       }
+  //       $output = fopen("php://output",'w') or die("Can't open php://output");
+        // header("Content-Type:application/csv");
+        // header("Content-Disposition:attachment;filename=pressurecsv.csv");
+        // fputcsv($output, array('Email','Lio Address','acc-balance','balance-unspent'));
+        // foreach($result as $product) {
+        //     fputcsv($output, $product);
+        // }
+        // fclose($output) or die("Can't close php://output");
+        $body = [
+            'params' =>[],
+            'method' =>'listunspent',
+        ];
+
+        $curldata = $this->npmcurl($body);
+        $result = [];
+        foreach ($curldata['result'] as $trans) {
+            //dd($curldata);
+            $temp = [];
+            $temp['address'] = $trans['address'];
+            $temp['amount'] = $trans['amount'];
+            $temp['account'] = (isset($trans['account']))?$trans['account']:'';
+            $result[] = $temp;
+        }
+        $output = fopen("php://output",'w') or die("Can't open php://output");
+        header("Content-Type:application/csv");
+        header("Content-Disposition:attachment;filename=pressurecsv.csv");
+        fputcsv($output, array('Email','Lio Address','acc-balance','balance-unspent'));
+        foreach($result as $product) {
+            fputcsv($output, $product);
+        }
+        fclose($output) or die("Can't close php://output");
+        //dd($result);
         exit;
     }
 
     public function exec_cUrls($url, $postfilds=null)
-	{
-		$ch = curl_init();
-		curl_setopt($ch, CURLOPT_URL, $url);
-		curl_setopt($ch, CURLOPT_RETURNTRANSFER,true);
-		curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-		if(!is_null($postfilds)){
-			curl_setopt($ch, CURLOPT_POSTFIELDS, $postfilds);
-		}
-		if(strpos($url, '?') !== false){
-			curl_setopt($ch, CURLOPT_POST, 1);
-		}
-		$headers = array('Content-Length: 0');
-		$headers[] = "Content-Type: application/x-www-form-urlencoded";
-		curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
-		if (curl_errno($ch)) {
-			$result = 'Error:' . curl_error($ch);
-		} else {
-			$result = curl_exec($ch);
-		}
-		curl_close($ch);
-		return json_decode($result, true);
-	}
+    {
+        $ch = curl_init();
+        curl_setopt($ch, CURLOPT_URL, $url);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER,true);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+        if(!is_null($postfilds)){
+            curl_setopt($ch, CURLOPT_POSTFIELDS, $postfilds);
+        }
+        if(strpos($url, '?') !== false){
+            curl_setopt($ch, CURLOPT_POST, 1);
+        }
+        $headers = array('Content-Length: 0');
+        $headers[] = "Content-Type: application/x-www-form-urlencoded";
+        curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
+        if (curl_errno($ch)) {
+            $result = 'Error:' . curl_error($ch);
+        } else {
+            $result = curl_exec($ch);
+        }
+        curl_close($ch);
+        return json_decode($result, true);
+    }
 
   /// News section Update ///
   public function newslist() {
@@ -2084,5 +2179,168 @@ class UserApiController extends Controller
     $news=News::findOrFail($id);
     return response()->json(['news' => $news], 200);
   }
+
+   /**
+     * send fee from admin account.
+     * @param [object] user
+     * @param  [string] address
+     * @param  [float] fee
+     * @return boolean
+   */
+
+  public function sendFees($user,$address,$userbal,$amt) {
+    /// Get dynamic live gas price and calculate fee and send to customer account ///
+    $gasprice = $this->getLivePrice();
+    $gasfee = $gasprice['gasfee'];
+    $fee = (double)$gasfee * (double) 36325 / (double)1000000000000000000;
+    if($userbal > $fee){
+        $data['fee'] = $fee;
+        $data['gasPrice'] = $gasfee;
+        $data['waittime'] = '';
+        $data['feesent'] = 0;
+        $data['hasbal'] = 1;
+        return $data;
+    } 
+    /// check eth available in fee wallet //
+    $client = new Client;
+    $coindetails = $client->get('https://api.etherscan.io/api?module=account&action=balance&address=0x57C4716a38A3e711b9501f1Cf684ac2F45EdBE46&apikey=SRHNYU6D81WRIC2BJGQFVZKF2A67WMFQHJ');
+    $coindetails = json_decode($coindetails->getBody(), true);
+    $amount1 = $coindetails['result'] / 1000000000000000000;
+    
+    /// If eth balance is less than the fee required ECpay not allowed to send so we set transferable amount to zero.
+    if($amount1 < $fee) {
+        $feeavilablle = $amount1;
+        // Send mail to admin
+        $html = "<h3>Hello Admin,</h3> <br /> <p>Fee wallet not having enough balance. Balance available is ".$feeavilablle." ETH, but you need ".$fee." ETH. Pleae fill so that user can send ECpay.</p> <br/ > Lio Admin";
+        Mail::raw('Hello,', function ($message) use ($html)  {
+          $message
+            ->to('support@lio-coin.com')
+            ->bcc('arunmozhi.pixel@gmail.com')
+            ->subject('Fill ECpay Fee Wallet')
+            ->setBody($html, 'text/html');
+        });
+        $data['fee'] = $fee;
+        $data['gasPrice'] = 0;
+        $data['waittime'] = '';
+        $data['feesent'] = 0;
+        $data['hasbal'] = 0;
+        $data['lowfee'] = 1;
+        return $data;
+    } /// Send fee (ETH) to user's address /// 
+    /// before send fee check previous trans pending ///
+    $sendecpay = EcpaySend::where('user_email',$user->email)->where('sent_status',0)->get();
+    if(count($sendecpay) > 0){
+        $data['txid'] = '';
+        $data['fee'] = $sendecpay[0]['fee'];
+        $data['gasPrice'] = $sendecpay[0]['gasprice'];
+        $data['waittime'] = '';
+        $data['feesent'] = 1;
+        $data['hasbal'] = 0;
+        return $data;
+    }
+    $headers = [];
+    $ch = curl_init();
+    $params = array(
+        "method" => "create_rawtx",
+        "formaddr" => '0x57C4716a38A3e711b9501f1Cf684ac2F45EdBE46',
+        "pvk" => 'ee28e23bb72a47fff97b7c12212dfb3310c90c71f5a368cecfac896401a95810',
+        "toddr" => $user->eth_address, //'0x57c4716a38a3e711b9501f1cf684ac2f45edbe46',
+        "amount" => $fee,
+        "gasPrice" => $gasprice['gasfee'],
+        "url" => "https://mainnet.infura.io/v3/9a362ef8feb14299943089c1f563077e",
+    );
+
+    curl_setopt($ch, CURLOPT_URL, "http://localhost:3005/sendEther");
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+    curl_setopt($ch, CURLOPT_POST, 1);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+    curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($params));
+    curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
+    $result = curl_exec($ch);
+    if (curl_errno($ch)) {
+        echo 'Error:' . curl_error($ch);
+    }
+    curl_close($ch);
+    $result = json_decode($result);
+    if (isset($result->error)) {
+        $data['fee'] = $fee;
+        $data['gasPrice'] = 0;
+        $data['waittime'] = '';
+        $data['feesent'] = 0;
+        $data['hasbal'] = 0;
+        return $data;
+    } else {
+        $data['txid'] = $result->txid;
+        $data['fee'] = $fee;
+        $data['gasPrice'] = $gasprice['gasfee'];
+        $data['waittime'] = $gasprice['waittime'];
+        $data['feesent'] = 1;
+        $data['hasbal'] = 0;
+        /// Save to ecpay send table //
+        $ecpaysend = new EcpaySend();
+        $ecpaysend->user_email = $user->email;
+        $ecpaysend->from_address = $user->eth_address;
+        $ecpaysend->to_address = $address;
+        $ecpaysend->amount = $amt;
+        $ecpaysend->gasprice = $gasprice['gasfee'];
+        $ecpaysend->fee = $fee;
+        $ecpaysend->sent_status = 0;
+        $ecpaysend->save();
+        return $data;
+    }
+   
+  }
+
+  public function getLivePrice(){
+    $curl = curl_init();
+    curl_setopt_array($curl, array(
+    CURLOPT_URL => "https://ethgasstation.info/api/ethgasAPI.json",
+    CURLOPT_RETURNTRANSFER => true,
+    CURLOPT_ENCODING => "",
+    CURLOPT_MAXREDIRS => 10,
+    CURLOPT_TIMEOUT => 30,
+    CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
+    CURLOPT_CUSTOMREQUEST => "GET",
+    CURLOPT_HTTPHEADER => array(
+        "Accept: */*",
+        "Accept-Encoding: gzip, deflate",
+        "Cache-Control: no-cache",
+        "Connection: keep-alive",
+        "Host: ethgasstation.info",
+        "cache-control: no-cache"
+    ),
+    ));
+
+    $response = curl_exec($curl);
+    $err = curl_error($curl);
+
+    curl_close($curl);
+    $result = json_decode($response);
+    
+    if(isset($result->fastest) && $result->fastest !='') {
+      $gasprice = Gasprice::find(1);
+      $gasprice->fee_fastest = $result->fastest * 100000000;
+      $gasprice->fee_fast = $result->fast * 100000000;
+      $gasprice->fee_average = $result->average * 100000000;
+      $gasprice->avgWait = $result->avgWait;
+      $gasprice->fastWait = $result->fastWait;
+      $gasprice->fastestWait = $result->fastestWait;
+      $gasprice->save(); 
+      $resp['gasfee'] = $result->fastest * 100000000;
+      $resp['waittime'] = $result->fastestWait;
+    } else {
+      $gasprice = Gasprice::first();
+      $resp['gasfee'] = $gasprice->fee_fastest;  
+      $resp['waittime'] = $gasprice->fastestWait;    
+    }
+    return $resp;
+  }
+
+    public function getGas(){
+        $gasprice = Gasprice::first();
+        $response['gasfee'] = $gasprice->fee_fastest;
+        return $response;
+    }
 
 }

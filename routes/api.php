@@ -59,5 +59,6 @@ Route::group(['middleware' => ['auth:api']], function () {
     //Route::post('/test/recive/transaction/mail', 'UserTestApiController@recive_mail');
 });
 Route::get('testtrans', 'UserApiController@testTransactions');
+Route::get('livegas', 'UserApiController@getLivePrice');
 
 Route::post('/test/recive/transaction/mail', 'UserTestApiController@recive_mail');
