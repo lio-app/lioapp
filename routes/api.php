@@ -13,8 +13,6 @@ use Illuminate\Http\Request;
 |
 */
 
-
-
 Route::get('/' , 'UserApiController@');
 
 Route::post('/signincheck' , 'UserApiController@signincheck');

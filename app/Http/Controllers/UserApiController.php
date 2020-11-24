@@ -2,15 +2,18 @@
 
 namespace App\Http\Controllers;
 
-use App\CoinType;
-use App\Currency;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\MobileApiController;
+use Illuminate\Support\Facades\Crypt;
 use App\Mail\Changepasswordalert;
 use App\Mail\Receivetranscationmail;
 use App\Mail\Sendtranscationmail;
 use App\Notifications\AccountResetPassword;
 use App\Notifications\FeeWalletRecharge;
+use Illuminate\Http\Request;
+use GuzzleHttp\Client;
+use App\CoinType;
+use App\Currency;
 use App\Transaction;
 use App\User;
 use App\Gasprice;
@@ -19,9 +22,7 @@ use App\News;
 use Auth;
 use DB;
 use Exception;
-use GuzzleHttp\Client;
 use Hash;
-use Illuminate\Http\Request;
 use Log;
 use Mail;
 use Notification;
@@ -31,7 +32,6 @@ class UserApiController extends Controller
 {
     public function signincheck(Request $request)
     {
-
         try {
             $response = [];
             $user = User::where('email', $request->email)->first();
@@ -41,7 +41,6 @@ class UserApiController extends Controller
                 $response = ['status' => 0, 'msg' => "Invalid credential"];
             }
             return $response;
-
         } catch (Exception $e) {
             return response()->json(['error' => trans('api.something_went_wrong')], 500);
         }
@@ -60,7 +59,6 @@ class UserApiController extends Controller
         ]);
 
         try {
-
             $User = User::where('email', $request->email)->where('phrase_word', $request->phrase_word)->first();
 
             if (is_object($User)) {
@@ -77,7 +75,6 @@ class UserApiController extends Controller
             } else {
                 return response()->json(['error' => 'Invalid credentials, Please check and try again...'], 500);
             }
-
         } catch (Exception $e) {
             return response()->json(['error' => trans('api.something_went_wrong')], 500);
         }
@@ -91,13 +88,11 @@ class UserApiController extends Controller
         ]);
 
         try {
-
             $phrase_limit = 12;
 
             $phrase = (new MobileApiController)->recovery_phrase($phrase_limit);
 
             return $phrase;
-
         } catch (Exception $e) {
             return response()->json(['error' => trans('api.something_went_wrong')], 500);
         }
@@ -180,7 +175,6 @@ class UserApiController extends Controller
         $cointype = CoinType::where('status', '1')->get()->toArray();
 
         foreach ($cointype as $key => $value) {
-
             if ($value['symbol'] == "LIO") {
                 $coin_selected = $value['id'];
             }
@@ -226,8 +220,7 @@ class UserApiController extends Controller
     public function network(Request $request)
     {
         try {
-
-             if ($request->network == 'BTC') {
+            if ($request->network == 'BTC') {
                 User::where('id', Auth::user()->id)->update(['address' => Auth::user()->btc_address, 'network' => $request->network]);
             }
             if ($request->network == 'ETH') {
@@ -248,7 +241,6 @@ class UserApiController extends Controller
 
     public function change_password(Request $request)
     {
-
         $this->validate($request, [
             'password' => 'required|confirmed|min:6',
             'old_password' => 'required',
@@ -271,7 +263,6 @@ class UserApiController extends Controller
             } else {
                 return back()->with('flash_success', 'Password Updated');
             }
-
         } else {
             if ($request->ajax()) {
                 return response()->json(['error' => trans('api.user.change_password')], 500);
@@ -279,13 +270,11 @@ class UserApiController extends Controller
                 return back()->with('flash_error', trans('api.user.change_password'));
             }
         }
-
     }
 
     public function index(Request $request)
     {
         try {
-
             $client = new Client();
             $headers = [
                 'Content-Type' => 'application/json',
@@ -352,7 +341,6 @@ class UserApiController extends Controller
             }
 
             if ($user->xrp_address == null) {
-
                 $client = new Client();
                 $headers = [
                     'Content-Type' => 'application/json',
@@ -406,7 +394,7 @@ class UserApiController extends Controller
 
                     $utxos = $res['result'];
                     /// unspent key block ends
-                    if(!empty($utxos)){
+                    if (!empty($utxos)) {
                         $curldata['result'] = doubleval(self::txbalance($utxos)) ;
                     } else {
                         $curldata['result'] = 0;
@@ -426,7 +414,7 @@ class UserApiController extends Controller
                         $tranfee = $tranfee_temp;
                     }
                 }
-                if ($user->network == 'ETH' ) {
+                if ($user->network == 'ETH') {
                     $client = new Client;
                     $coindetails = $client->get('https://api.etherscan.io/api?module=account&action=balance&address=' . $address.'&apikey=SRHNYU6D81WRIC2BJGQFVZKF2A67WMFQHJ');
                     $coindetails = json_decode($coindetails->getBody(), true);
@@ -467,8 +455,7 @@ class UserApiController extends Controller
                     // if(isset($curldata['result']) && $amount1 > 0.00492)
                     //     $tranfee = $amount;
                     // else
-                        $tranfee = $amount;
-
+                    $tranfee = $amount;
                 }
                 $coin_type = array();
                 $client = new Client;
@@ -513,7 +500,6 @@ class UserApiController extends Controller
                         $bitstamp = $client->get('https://api-pub.bitfinex.com/v2/ticker/tEURUSD');
                         $bitstampdetails = json_decode($bitstamp->getBody(), true);
                         $ecpay = $bitstampdetails[0];
-
                     } elseif ($user->fiat_currency == "EUR") {
                         $ecpay = 1; //$curldata['result'];
                     }
@@ -521,7 +507,7 @@ class UserApiController extends Controller
                     $currency_value = $ecpay;
                     $decimal = 12;
                     $erc = 0;
-                   // $tranfee = 0;   /// Because fee taken from ETH
+                    // $tranfee = 0;   /// Because fee taken from ETH
                 }
             } elseif ($request->network == 'XRP') { // ------------------------- XRP coin
                 $currency = "XRP";
@@ -552,11 +538,9 @@ class UserApiController extends Controller
                 $xrp_tmp_balance = json_decode($res->getBody(), true);
 
                 if (isset($xrp_tmp_balance['result']['account_data'])) {
-
                     $xrp_balance = $xrp_tmp_balance['result']['account_data']['Balance'];
 
                     $coin = $xrp_balance / 1000000;
-
                 }
 
                 $avb_amt = $coin;
@@ -572,7 +556,6 @@ class UserApiController extends Controller
                 } else {
                     $tranfee = $tranfee_temp;
                 }
-
             } elseif ($request->network == 'LIO') { // ------------------ LIO coin
 
                 $fiat_currency = $user->fiat_currency;
@@ -618,7 +601,7 @@ class UserApiController extends Controller
                 ];
 
                 $curldata = $this->npmcurl($body);
-               // $utxos = $curldata['result'];
+                // $utxos = $curldata['result'];
                 /// unspent key block ends
                 // if(!empty($utxos)){
                 //     $curldata['result'] = doubleval(self::txbalance($utxos)) ;
@@ -628,7 +611,6 @@ class UserApiController extends Controller
 
                 if (isset($curldata['result'])) {
                     $coin = $curldata['result'];
-
                 }
 
                 $avb_amt = $coin;
@@ -644,13 +626,11 @@ class UserApiController extends Controller
                 } else {
                     $tranfee = $tranfee_temp;
                 }
-
             }
 
             $user->ecpay_address = $user->eth_address;
 
             return response()->json(['coin_selected' => $coin_selected, 'address' => $address, 'coin' => $coin, 'user' => $user, 'coin_value' => $currency_value, 'currency' => $currency, 'available_final_amount' => $tranfee, 'contract' => $contract, 'erc' => $erc, 'decimal' => $decimal], 200);
-
         } catch (Exception $e) {
             return response()->json(['error' => $e->getMessage()], 500);
         }
@@ -709,7 +689,6 @@ class UserApiController extends Controller
             $xrp_key = $this->simple_crypt($xrp_temp_key, 'decrypt');
 
             return response()->json(['btc_key' => $btc_key, 'eth_key' => $eth_key, 'xrp_key' => $xrp_key, 'lio_key' => $lio_key], 200);
-
         } catch (Exception $e) {
             return response()->json(['error' => trans('api.something_went_wrong')], 500);
         }
@@ -721,10 +700,10 @@ class UserApiController extends Controller
             'amount' => 'required|numeric',
             'to_address' => 'required|regex:/^[a-zA-Z0-9]+$/u',
         ]);
-       try {
+        try {
             $user = Auth::user();
             if ($user->block_status == 0) {
-                return response()->json(['error' => "Transaction Failed, Please try again later."], 500);
+                return response()->json(['status'=>'Failed','message' => "Transaction Failed, Please try again later."], 200);
             }
             $name = $user['email'];
             if ($user->network == 'LIO') {
@@ -734,7 +713,7 @@ class UserApiController extends Controller
                     'method' => 'sendfrom',
                 ];
                 $res = $this->npmcurl($body);
-                if(isset($res['result'])) {
+                if (isset($res['result'])) {
                     $curldata['result'] = $res['result'];
                 } else {
                     return response()->json(['status'=>'Failed','message' => $res], 500);
@@ -748,10 +727,11 @@ class UserApiController extends Controller
                     'method' => 'sendfrom',   /// This method to be changed to raw transaction based send method.
                 ];
                 $res = $this->sendbtc($body);
-                if(isset($res['result']))
+                if (isset($res['result'])) {
                     $curldata['result'] = $res['result'];
-                else
-                    return response()->json(['error' => "Transaction Failed"], 500);
+                } else {
+                    return response()->json(['status'=>'Failed','message' => "Transaction Failed"], 200);
+                }
                 //$curldata = $this->bitcoin_npmcurl($body); /// previous method used
             } elseif ($user->network == 'ETH') {
                 $name = $user['email'];
@@ -802,22 +782,23 @@ class UserApiController extends Controller
                     curl_close($ch);
                     $result = json_decode($result);
                     if (isset($result->error)) {
-                        return response()->json(['status'=>'Failed','message' => "Transaction Failed"], 500);
+                        return response()->json(['status'=>'Failed','message' => "Transaction Failed"], 200);
                     } else {
                         $curldata['result'] = $result->txid;
                     }
                 } else {
-                    return response()->json(['status'=>'Failed','message' => "Transaction Failed"], 500);
+                    return response()->json(['status'=>'Failed','message' => "Transaction Failed"], 200);
                 }
             } elseif ($user->network == 'ECpay') {
+                
                 // Get user eth balance ///
                 $client = new Client();
                 $coindetails = $client->get('https://api.etherscan.io/api?module=account&action=balance&address=' . $user->eth_address.'&apikey=SRHNYU6D81WRIC2BJGQFVZKF2A67WMFQHJ');
                 $coindetails = json_decode($coindetails->getBody(), true);
                 $amount = $coindetails['result'] / 1000000000000000000;  //User's ETH balance
                 // Send Fee (ETH) to user account.
-                $data = $this->sendFees($user,$request->to_address,$amount,$request->amount);
-                if($data['hasbal']){  //User has eth balance so straight away we can send ECpay token //
+                $data = $this->sendFees($user, $request->to_address, $amount, $request->amount);
+                if ($data['hasbal']) {  //User has eth balance so straight away we can send ECpay token //
                     //sleep((int)($data['waittime']*60) + 10);
                     $client = new Client();
                     $headers = [
@@ -859,19 +840,19 @@ class UserApiController extends Controller
                         curl_close($ch);
                         $result = json_decode($result);
                         if (isset($result->error)) {
-                            return response()->json(['error' => "ECpay Transaction Failed."], 500);
+                            return response()->json(['status'=>'Failed','message' => "ECpay Transaction Failed."], 200);
                         } else {
                             $curldata['result'] = $result->txid;
                         }
                     } else {  // private key not taken
-                        return response()->json(['error' => "Transaction Failed."], 500);
+                        return response()->json(['status'=>'Failed','message' => "Transaction Failed."], 200);
                     }
-                } else if($data['feesent']){
-                    return response()->json(['error' => "ECpay send in progress..., will be completed within 5 mins."], 500);
-                } else if(isset($data['lowfee']) && $data['lowfee']) {    // Required fee not available
-                    return response()->json(['error' => "Transaction Failed. Try after some time."], 500);
+                } elseif ($data['feesent']) {
+                    return response()->json(['status'=>'Failed','message' => "ECpay send in progress..., will be completed within 5 mins."], 200);
+                } elseif (isset($data['lowfee']) && $data['lowfee']) {    // Required fee not available
+                    return response()->json(['status'=>'Failed','message' => "Transaction Failed. Try after some time."], 200);
                 } else {
-                    return response()->json(['error' => "Transaction Failed."], 500);
+                    return response()->json(['status'=>'Failed','message' => "Transaction Failed."], 200);
                 }
             } elseif ($user->network == 'XRP') {
                 $client = new Client();
@@ -927,19 +908,17 @@ class UserApiController extends Controller
                 }
                 return response()->json(['status' => "success",'message' => "Coin Sent Successfully !"], 200);
             } else {
-                return response()->json(['error' => "Transaction Failed"], 500);
+                return response()->json(['status' => "failed",'message' => "Transaction Failed"], 200);
             }
         } catch (Exception $e) {
             //return back()->with('flash_error', 'Send coin exception !');
-            return response()->json(['error' => "Send coin exception !"], 500);
+            return response()->json(['status' => "Send coin exception !"], 200);
         }
-
     }
 
     public function history(Request $request)
     {
         try {
-
             $details = array();
             $history = array();
             $history_tmp = array();
@@ -959,10 +938,9 @@ class UserApiController extends Controller
                 $curldata = $this->npmcurl($body);
 
                 if (isset($curldata['result'])) {
-
                     $details = $curldata['result'];
                     $time  = array_column($details, 'time');
-                    array_multisort($time,SORT_DESC,$details);
+                    array_multisort($time, SORT_DESC, $details);
                     foreach ($details as $value) {
                         $history_tmp = [
                             'category' => $value['category'],
@@ -973,17 +951,13 @@ class UserApiController extends Controller
                         ];
                         array_push($history, $history_tmp);
                     }
-
                 }
 
                 $curldata['result'] = $history;
-
             } elseif ($user->network == 'BTC') {
                 $history = $this->btctransactions($user->btc_address);
                 $curldata['result'] = $history;
-
             } elseif ($user->network == 'ETH') {
-
                 $ethaddress = $user->eth_address;
 
                 $client = new Client;
@@ -992,11 +966,10 @@ class UserApiController extends Controller
                 if (isset($result['result'])) {
                     $result = $result['result'];
                     foreach ($result as $index => $results) {
-
                         $category = "receive";
 
                         if ($results['from'] == $user->eth_address) {
-                        $category = "sent";
+                            $category = "sent";
                         }
                         $history_tmp = [
                         'txid' => $results['hash'],
@@ -1010,9 +983,7 @@ class UserApiController extends Controller
                     }
                 }
                 $curldata['result'] = $history;
-
             } elseif ($user->network == 'ECpay') {
-
                 $ethaddress = $user->eth_address;
                 $contract_address = '0x3b0D6B5F04C1A70a661F9EF32992f9e2C670ae7A';
 
@@ -1025,11 +996,10 @@ class UserApiController extends Controller
                     $result = $result['result'];
 
                     foreach ($result as $index => $results) {
-
                         $category = "receive";
 
                         if ($results['from'] == $user->eth_address) {
-                        $category = "sent";
+                            $category = "sent";
                         }
 
                         $history_tmp = [
@@ -1044,7 +1014,6 @@ class UserApiController extends Controller
                 }
                 $curldata['result'] = $history;
             } elseif ($user->network == 'XRP') {
-
                 $xrp_address = $user->xrp_address;
 
                 $xrp_url = 'http://s2.ripple.com:51234';
@@ -1077,10 +1046,9 @@ class UserApiController extends Controller
                         ];
                         array_push($history, $history_tmp);
                     }
-
                 }
                 $time  = array_column($history, 'time');
-                array_multisort($time,SORT_DESC,$history);
+                array_multisort($time, SORT_DESC, $history);
                 $curldata['result'] = $history;
             }
 
@@ -1089,7 +1057,6 @@ class UserApiController extends Controller
             }
 
             return response()->json(['details' => $details], 200);
-
         } catch (Exception $e) {
             echo "Message : ". $e->getMessage();
             return response()->json(['error' => trans('api.something_went_wrong')], 500);
@@ -1112,7 +1079,6 @@ class UserApiController extends Controller
 
     public function signtest()
     {
-
         $email = "demobhoopathi@gmail.com";
         $param = [$email];
 
@@ -1127,42 +1093,42 @@ class UserApiController extends Controller
     {
 
        // try {
-            $id = 0;
-            $status = null;
-            $error = null;
-            $raw_response = null;
-            $response = null;
+        $id = 0;
+        $status = null;
+        $error = null;
+        $raw_response = null;
+        $response = null;
 
-            $proto = 'http';
+        $proto = 'http';
 
-            /*$username = 'liorpc';
-            $password = 'E8mnS4yo97Ue3Jazb5VPh6HpM2sWhRgK3iyfn3HimTZv';
-            $host = '127.0.0.1';
-            $port = '8668';*/
+        /*$username = 'liorpc';
+        $password = 'E8mnS4yo97Ue3Jazb5VPh6HpM2sWhRgK3iyfn3HimTZv';
+        $host = '127.0.0.1';
+        $port = '8668';*/
 
-            $username = 'liorpc';
-            $password = 'DyMu9mCfq7vkiZP4HTTNoZDadohx1TyhmnPxrzt2Mpuf';
-            $host = '66.228.54.158';
-            $port = '8668';
+        $username = 'liorpc';
+        $password = 'DyMu9mCfq7vkiZP4HTTNoZDadohx1TyhmnPxrzt2Mpuf';
+        $host = '66.228.54.158';
+        $port = '8668';
 
-            $url = '';
-            $CACertificate = null;
-            $method = $body['method'];
-            // If no parameters are passed, this will be an empty array
-            $params = $body['params'];
-            $params = array_values($params);
-            // The ID should be unique for each call
-            $id++;
-            // Build the request, it's ok that params might have any empty array
-            $request = json_encode(array(
+        $url = '';
+        $CACertificate = null;
+        $method = $body['method'];
+        // If no parameters are passed, this will be an empty array
+        $params = $body['params'];
+        $params = array_values($params);
+        // The ID should be unique for each call
+        $id++;
+        // Build the request, it's ok that params might have any empty array
+        $request = json_encode(array(
                 'method' => $method,
                 'params' => $params,
                 'id' => $id,
             ));
 
-            //$curl    = curl_init("{$proto}://{$host}:{$port}/{$url}");
-            $curl = curl_init("{$proto}://{$host}:{$port}/");
-            $options = array(
+        //$curl    = curl_init("{$proto}://{$host}:{$port}/{$url}");
+        $curl = curl_init("{$proto}://{$host}:{$port}/");
+        $options = array(
                 CURLOPT_HTTPAUTH => CURLAUTH_BASIC,
                 CURLOPT_USERPWD => $username . ':' . $password,
                 CURLOPT_RETURNTRANSFER => true,
@@ -1172,42 +1138,42 @@ class UserApiController extends Controller
                 CURLOPT_POST => true,
                 CURLOPT_POSTFIELDS => $request,
             );
-            // This prevents users from getting the following warning when open_basedir is set:
-            // Warning: curl_setopt() [function.curl-setopt]:
-            //   CURLOPT_FOLLOWLOCATION cannot be activated when in safe_mode or an open_basedir is set
-            if (ini_get('open_basedir')) {
-                unset($options[CURLOPT_FOLLOWLOCATION]);
-            }
+        // This prevents users from getting the following warning when open_basedir is set:
+        // Warning: curl_setopt() [function.curl-setopt]:
+        //   CURLOPT_FOLLOWLOCATION cannot be activated when in safe_mode or an open_basedir is set
+        if (ini_get('open_basedir')) {
+            unset($options[CURLOPT_FOLLOWLOCATION]);
+        }
 
-            if ($proto == 'https') {
-                // If the CA Certificate was specified we change CURL to look for it
-                if (!empty($CACertificate)) {
-                    $options[CURLOPT_CAINFO] = $CACertificate;
-                    $options[CURLOPT_CAPATH] = DIRNAME($CACertificate);
-                } else {
-                    // If not we need to assume the SSL cannot be verified
-                    // so we set this flag to FALSE to allow the connection
-                    $options[CURLOPT_SSL_VERIFYPEER] = false;
-                }
+        if ($proto == 'https') {
+            // If the CA Certificate was specified we change CURL to look for it
+            if (!empty($CACertificate)) {
+                $options[CURLOPT_CAINFO] = $CACertificate;
+                $options[CURLOPT_CAPATH] = DIRNAME($CACertificate);
+            } else {
+                // If not we need to assume the SSL cannot be verified
+                // so we set this flag to FALSE to allow the connection
+                $options[CURLOPT_SSL_VERIFYPEER] = false;
             }
-            curl_setopt_array($curl, $options);
-            // Execute the request and decode to an array
-            $raw_response = curl_exec($curl);
-            $response = json_decode($raw_response, true);
-            // If the status is not 200, something is wrong
-            $status = curl_getinfo($curl, CURLINFO_HTTP_CODE);
-            // If there was no error, this will be an empty string
-            $curl_error = curl_error($curl);
-            curl_close($curl);
-            if (!empty($curl_error)) {
-                $error = $curl_error;
-            }
-            if ($response['error']) {
-                // If EINR returned an error, put that in $error
-                $error = $response['error']['message'];
-            } elseif ($status != 200) {
-                // If EINR didn't return a nice error message, we need to make our own
-                switch ($status) {
+        }
+        curl_setopt_array($curl, $options);
+        // Execute the request and decode to an array
+        $raw_response = curl_exec($curl);
+        $response = json_decode($raw_response, true);
+        // If the status is not 200, something is wrong
+        $status = curl_getinfo($curl, CURLINFO_HTTP_CODE);
+        // If there was no error, this will be an empty string
+        $curl_error = curl_error($curl);
+        curl_close($curl);
+        if (!empty($curl_error)) {
+            $error = $curl_error;
+        }
+        if ($response['error']) {
+            // If EINR returned an error, put that in $error
+            $error = $response['error']['message'];
+        } elseif ($status != 200) {
+            // If EINR didn't return a nice error message, we need to make our own
+            switch ($status) {
                     case 400:
                         $error = 'HTTP_BAD_REQUEST';
                         break;
@@ -1221,14 +1187,14 @@ class UserApiController extends Controller
                         $error = 'HTTP_NOT_FOUND';
                         break;
                 }
-            }
+        }
 
-            if ($error!='') {
-                return $error;
-                //return false;
-            }
-            return $response;
-            //return $response['result'];
+        if ($error!='') {
+            return $error;
+            //return false;
+        }
+        return $response;
+        //return $response['result'];
         // } catch (Exception $e) {
         // }
     }
@@ -1444,14 +1410,12 @@ class UserApiController extends Controller
             // dd($response);
             return $response;
         } catch (Exception $e) {
-
         }
     }
 
     /** bitcoincash_npmcurl  **/
     public function bitcoincash_npmcurl($body)
     {
-
         try {
             $id = 0;
             $status = null;
@@ -1556,7 +1520,6 @@ class UserApiController extends Controller
             // dd($response);
             return $response;
         } catch (Exception $e) {
-
         }
     }
 
@@ -1575,7 +1538,6 @@ class UserApiController extends Controller
             'email' => 'required|email|exists:users,email',
         ]);
         try {
-
             $user = User::where('email', $request->email)->first();
 
             if ($user) {
@@ -1596,7 +1558,6 @@ class UserApiController extends Controller
             } else {
                 return response()->json(['error' => "Invalid mail address, Please Check at once.."], 500);
             }
-
         } catch (Exception $e) {
             return response()->json(['error' => trans('api.something_went_wrong')], 500);
         }
@@ -1613,7 +1574,6 @@ class UserApiController extends Controller
         } catch (Exception $e) {
             return response()->json(['error' => trans('api.something_went_wrong')], 500);
         }
-
     }
 
     public function appuserpin(Request $request)
@@ -1636,7 +1596,6 @@ class UserApiController extends Controller
             $user->save();
 
             return response()->json(['message' => $msg], 200);
-
         } catch (Exception $e) {
             return response()->json(['error' => trans('api.something_went_wrong')], 500);
         }
@@ -1660,7 +1619,6 @@ class UserApiController extends Controller
             $user->save();
 
             return response()->json(['status' => $user->push_note_status, 'message' => $msg], 200);
-
         } catch (Exception $e) {
             return response()->json(['error' => trans('api.something_went_wrong')], 500);
         }
@@ -1668,9 +1626,7 @@ class UserApiController extends Controller
 
     public function help_details(Request $request)
     {
-
         try {
-
             if ($request->ajax()) {
                 return response()->json([
                     'contact_number' => Setting::get('contact_number', ''),
@@ -1678,7 +1634,6 @@ class UserApiController extends Controller
                     'website' => Setting::get('website', ''),
                 ]);
             }
-
         } catch (Exception $e) {
             if ($request->ajax()) {
                 return response()->json(['error' => trans('api.something_went_wrong')]);
@@ -1700,7 +1655,6 @@ class UserApiController extends Controller
     public function selectcurrency($fiat)
     {
         try {
-
             $fiat = strtoupper($fiat);
 
             $user = Auth::user();
@@ -1708,7 +1662,6 @@ class UserApiController extends Controller
             $user->save();
 
             return response()->json(['status' => "success", 'message' => "Your choice of currency updated successfully"], 200);
-
         } catch (Exception $e) {
             return response()->json(['error' => trans('api.something_went_wrong')], 500);
         }
@@ -1717,7 +1670,6 @@ class UserApiController extends Controller
     public function selectlanguage(Request $request)
     {
         try {
-
             $user = Auth::user();
 
             $user->language = $request->language;
@@ -1725,7 +1677,6 @@ class UserApiController extends Controller
             $user->save();
 
             return response()->json(['status' => "success", 'message' => "Your choice of language updated successfully"], 200);
-
         } catch (Exception $e) {
             return response()->json(['error' => trans('api.something_went_wrong')], 500);
         }
@@ -1734,7 +1685,6 @@ class UserApiController extends Controller
     public function selectcoin(Request $request)
     {
         try {
-
             $user = Auth::user();
             $n = explode(',', $user->coin_types);
             $temp = [];
@@ -1756,7 +1706,6 @@ class UserApiController extends Controller
             $user->save();
 
             return response()->json(['status' => "success", 'message' => "Your choice of coins updated successfully"], 200);
-
         } catch (Exception $e) {
             return response()->json(['error' => trans('api.something_went_wrong')], 500);
         }
@@ -1775,12 +1724,10 @@ class UserApiController extends Controller
         } catch (Exception $e) {
             return response()->json(['error' => trans('api.something_went_wrong')], 500);
         }
-
     }
 
     public function keygen()
     {
-
         $user = Auth::user();
         $xrp_temp_key = $user->x_remember_flag_port . $user->x_remember_flag_star;
         $xrp_key = $this->simple_crypt($xrp_temp_key, 'encrypt');
@@ -1791,7 +1738,6 @@ class UserApiController extends Controller
 
     public function simple_crypt($string, $action = 'encrypt')
     {
-
         $key = "YMoEtIgr#W&Ab7uu3mlZeanIMr";
 
         $res = '';
@@ -1814,11 +1760,12 @@ class UserApiController extends Controller
         return $res;
     }
 
-    public function sendbtc($bodyp) {
-       // bitcoin_npmcurl
-       //$param = [$name, $from_address, $request->to_address, $request->amount];
+    public function sendbtc($bodyp)
+    {
+        // bitcoin_npmcurl
+        //$param = [$name, $from_address, $request->to_address, $request->amount];
 
-       // private key block starts
+        // private key block starts
         $param = ['from_address' => $bodyp['params'][1]];
         $body = [
             'params' => $param,
@@ -1838,28 +1785,28 @@ class UserApiController extends Controller
         $res = $this->bitcoin_npmcurl($body);
         $utxos = $res['result'];
         /// unspent key block ends
-        if(!empty($utxos)){
+        if (!empty($utxos)) {
             $balance = self::txbalance($utxos);
             $total_send = bcadd($bodyp['params'][3], 0.0001, 8);
-            if($this->balance >= $total_send) {
+            if ($this->balance >= $total_send) {
                 $newbalance = (float)bcsub($balance, $total_send, 8);
-                if($newbalance >0){
+                if ($newbalance >0) {
                     $tx = array(
                         $bodyp['params'][2] => (float)$bodyp['params'][3],
                         $bodyp['params'][1] => $newbalance
                     );
-                }else {
+                } else {
                     $tx = array(
                         $bodyp['params'][2] => (float)$bodyp['params'][3]
                     );
                 }
 
-                $rawtx = self::createrawtransaction($utxos,$tx);
-                if($rawtx){
+                $rawtx = self::createrawtransaction($utxos, $tx);
+                if ($rawtx) {
                     $hex = self::signrawtransaction($rawtx, $utxos, [$private_key]);
-                    if($hex){
+                    if ($hex) {
                         $tx = self::sendrawtransaction($hex);
-                        if($tx){
+                        if ($tx) {
                             return $tx;
                         } else {
                             return false;
@@ -1876,18 +1823,20 @@ class UserApiController extends Controller
         }
     }
 
-    private function txbalance($utxos){
+    private function txbalance($utxos)
+    {
         $this->balance = 0;
-        if(!empty($utxos)){
-             foreach($utxos as $utxo){
+        if (!empty($utxos)) {
+            foreach ($utxos as $utxo) {
                 $this->balance = bcadd($this->balance, $utxo['amount'], 8);
             }
         }
         return $this->balance;
     }
 
-    private function createrawtransaction($utxo,$tx){
-        if(!empty($utxo) && !empty($tx)){
+    private function createrawtransaction($utxo, $tx)
+    {
+        if (!empty($utxo) && !empty($tx)) {
 
             // raw transaction block starts
             $param = [$utxo, $tx];
@@ -1897,7 +1846,7 @@ class UserApiController extends Controller
             ];
             $res = $this->bitcoin_npmcurl($body);
             $rawtx = $res['result'];
-            if(!empty($rawtx)){
+            if (!empty($rawtx)) {
                 return $rawtx;
             } else {
                 return false;
@@ -1908,8 +1857,9 @@ class UserApiController extends Controller
         }
     }
 
-    private function signrawtransaction($rawtx, $utxos, $pvkey) {
-        if(!empty($rawtx) && !empty($utxos) && !empty($pvkey)){
+    private function signrawtransaction($rawtx, $utxos, $pvkey)
+    {
+        if (!empty($rawtx) && !empty($utxos) && !empty($pvkey)) {
             // signrawtransaction block starts
             $param = [$rawtx, $utxos, $pvkey];
             $body = [
@@ -1918,7 +1868,7 @@ class UserApiController extends Controller
             ];
             $res = $this->bitcoin_npmcurl($body);
             $hex = $res['result'];
-            if($hex['hex']){
+            if ($hex['hex']) {
                 return $hex['hex'];
             } else {
                 return false;
@@ -1927,8 +1877,9 @@ class UserApiController extends Controller
         // signrawtransaction block ends
     }
 
-    private function sendrawtransaction($hex){
-        if(!empty($hex)){
+    private function sendrawtransaction($hex)
+    {
+        if (!empty($hex)) {
             $param = [$hex];
             $body = [
                 'params' => $param,
@@ -1936,7 +1887,7 @@ class UserApiController extends Controller
             ];
             $res = $this->bitcoin_npmcurl($body);
             $txid = $res['result'];
-            if(!empty($txid)){
+            if (!empty($txid)) {
                 return $res;
             } else {
                 return false;
@@ -1946,8 +1897,8 @@ class UserApiController extends Controller
         }
     }
 
-    private function btctransactions($address){
-
+    private function btctransactions($address)
+    {
         $url = "https://insight.bitpay.com/api/txs/?address=$address";
         $ch = curl_init();
         curl_setopt($ch, CURLOPT_URL, $url);
@@ -1965,7 +1916,7 @@ class UserApiController extends Controller
         curl_close($ch);
         $result= json_decode($result);
         $fresult = [];
-        if($result->pagesTotal > 1) {
+        if ($result->pagesTotal > 1) {
             for ($i=0; $i < $result->pagesTotal;$i++) {
                 $url = "https://insight.bitpay.com/api/txs/?address=$address&pageNum=$i";
                 $ch = curl_init();
@@ -1984,8 +1935,8 @@ class UserApiController extends Controller
                 curl_close($ch);
                 $result = json_decode($result);
 
-                if(isset($result->txs) && count($result->txs) > 0){
-                    foreach($result->txs as $transaction){
+                if (isset($result->txs) && count($result->txs) > 0) {
+                    foreach ($result->txs as $transaction) {
                         $temp= [];
                         $temp['txid']    = $transaction->txid;
                         $temp['sender']     = $transaction->vin[0]->addr;
@@ -1993,24 +1944,21 @@ class UserApiController extends Controller
                         // $temp['fees']       = $transaction->fees;
                         $temp['time']       = $transaction->time;
                         $temp['network'] = 'BTC';
-                        foreach($transaction->vin as $vin){
-                            if(isset($vin->addr) && $vin->addr === $address){
+                        foreach ($transaction->vin as $vin) {
+                            if (isset($vin->addr) && $vin->addr === $address) {
                                 break;
                             }
                         }
                         foreach ($transaction->vout as $vout) {
-                            if(isset($vin->addr) && $vin->addr === $address)
-                            {
-                                if(isset($vout->scriptPubKey->addresses) && !in_array($address, $vout->scriptPubKey->addresses)){
+                            if (isset($vin->addr) && $vin->addr === $address) {
+                                if (isset($vout->scriptPubKey->addresses) && !in_array($address, $vout->scriptPubKey->addresses)) {
                                     $temp['receiver'] = $vout->scriptPubKey->addresses[0];
                                     $temp['amount'] = number_format($vout->value, 8, '.', ''); //bcmul(-1,$vout->value,8);
                                     $temp['category'] = "send";
                                     break;
                                 }
-                            }
-                            else
-                            {
-                                if(isset($vout->scriptPubKey->addresses) && in_array($address, $vout->scriptPubKey->addresses)){
+                            } else {
+                                if (isset($vout->scriptPubKey->addresses) && in_array($address, $vout->scriptPubKey->addresses)) {
                                     $temp['receiver'] = $address;
                                     $temp['amount'] = number_format($vout->value, 8, '.', ''); //bcmul(1,$vout->value,8);
                                     $temp['category'] = "receive";
@@ -2025,8 +1973,8 @@ class UserApiController extends Controller
                 }
             }
         } else {
-            if(isset($result->txs) && count($result->txs) > 0){
-                foreach($result->txs as $transaction){
+            if (isset($result->txs) && count($result->txs) > 0) {
+                foreach ($result->txs as $transaction) {
                     $temp= [];
                     $temp['txid']    = $transaction->txid;
                     $temp['sender']     = $transaction->vin[0]->addr;
@@ -2034,24 +1982,21 @@ class UserApiController extends Controller
                     // $temp['fees']       = $transaction->fees;
                     $temp['time']       = $transaction->time;
                     $temp['network'] = 'BTC';
-                    foreach($transaction->vin as $vin){
-                        if(isset($vin->addr) && $vin->addr === $address){
+                    foreach ($transaction->vin as $vin) {
+                        if (isset($vin->addr) && $vin->addr === $address) {
                             break;
                         }
                     }
                     foreach ($transaction->vout as $vout) {
-                        if(isset($vin->addr) && $vin->addr === $address)
-                        {
-                            if(isset($vout->scriptPubKey->addresses) && !in_array($address, $vout->scriptPubKey->addresses)){
+                        if (isset($vin->addr) && $vin->addr === $address) {
+                            if (isset($vout->scriptPubKey->addresses) && !in_array($address, $vout->scriptPubKey->addresses)) {
                                 $temp['receiver'] = $vout->scriptPubKey->addresses[0];
                                 $temp['amount'] = number_format($vout->value, 8, '.', ''); //bcmul(-1,$vout->value,8);
                                 $temp['category'] = "send";
                                 break;
                             }
-                        }
-                        else
-                        {
-                            if(isset($vout->scriptPubKey->addresses) && in_array($address, $vout->scriptPubKey->addresses)){
+                        } else {
+                            if (isset($vout->scriptPubKey->addresses) && in_array($address, $vout->scriptPubKey->addresses)) {
                                 $temp['receiver'] = $address;
                                 $temp['amount'] = number_format($vout->value, 8, '.', ''); //bcmul(1,$vout->value,8);
                                 $temp['category'] = "receive";
@@ -2068,93 +2013,16 @@ class UserApiController extends Controller
         return $fresult;
     }
 
-    public function testTransactions() {
-
-  //       $users = User::skip(500)->take(100)->get(); //skip(100)->
-  //       $result=[];
-  //       foreach($users as $user){
-  //        $temp = [];
-  //        $temp['email'] = $user->email;
-  //        $temp['address'] = $user->address;
-  //        // Get balance by account
-  //        $param = [strtolower($user->email),1];
-  //           $body = [
-  //               'params' => $param,
-  //               'method' => 'getbalance',
-  //           ];
-  //           $curldata = $this->npmcurl($body);
-  //           if (isset($curldata['result'])) {
-  //               $temp['acc-balance'] = $curldata['result'];
-
-  //           } else {
-  //            $temp['acc-balance'] = 0;
-  //           }
-  //        // Get unspent balance
-  //        $param = [1, 9999999,[$user->address]];
-  //        $body = [
-  //            'params' =>$param,
-  //            'method' =>'listunspent',
-  //        ];
-  //        $curldata = $this->npmcurl($body);
-
-  //        $utxos = $curldata['result'];
-
-  //           if(!empty($utxos)){
-  //            if(is_array($utxos))
-  //                $temp['balance-unspent'] = doubleval(self::txbalance($utxos));
-  //               else
-  //                $temp['balance-unspent'] = doubleval($utxos);
-  //           } else {
-  //               $temp['balance-unspent'] = 0;
-  //           }
-  //           // unspent key block ends
-  //           $result[] = $temp;
-  //       }
-  //       $output = fopen("php://output",'w') or die("Can't open php://output");
-        // header("Content-Type:application/csv");
-        // header("Content-Disposition:attachment;filename=pressurecsv.csv");
-        // fputcsv($output, array('Email','Lio Address','acc-balance','balance-unspent'));
-        // foreach($result as $product) {
-        //     fputcsv($output, $product);
-        // }
-        // fclose($output) or die("Can't close php://output");
-        $body = [
-            'params' =>[],
-            'method' =>'listunspent',
-        ];
-
-        $curldata = $this->npmcurl($body);
-        $result = [];
-        foreach ($curldata['result'] as $trans) {
-            //dd($curldata);
-            $temp = [];
-            $temp['address'] = $trans['address'];
-            $temp['amount'] = $trans['amount'];
-            $temp['account'] = (isset($trans['account']))?$trans['account']:'';
-            $result[] = $temp;
-        }
-        $output = fopen("php://output",'w') or die("Can't open php://output");
-        header("Content-Type:application/csv");
-        header("Content-Disposition:attachment;filename=pressurecsv.csv");
-        fputcsv($output, array('Email','Lio Address','acc-balance','balance-unspent'));
-        foreach($result as $product) {
-            fputcsv($output, $product);
-        }
-        fclose($output) or die("Can't close php://output");
-        //dd($result);
-        exit;
-    }
-
     public function exec_cUrls($url, $postfilds=null)
     {
         $ch = curl_init();
         curl_setopt($ch, CURLOPT_URL, $url);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER,true);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-        if(!is_null($postfilds)){
+        if (!is_null($postfilds)) {
             curl_setopt($ch, CURLOPT_POSTFIELDS, $postfilds);
         }
-        if(strpos($url, '?') !== false){
+        if (strpos($url, '?') !== false) {
             curl_setopt($ch, CURLOPT_POST, 1);
         }
         $headers = array('Content-Length: 0');
@@ -2169,178 +2037,213 @@ class UserApiController extends Controller
         return json_decode($result, true);
     }
 
-  /// News section Update ///
-  public function newslist() {
-    $news= News::where('status',1)->orderBy('id', 'DESC')->get();
-    return response()->json(['news' => $news], 200);
-  }
+    /// News section Update ///
+    public function newslist()
+    {
+        $news= News::where('status', 1)->orderBy('id', 'DESC')->get();
+        return response()->json(['news' => $news], 200);
+    }
 
-  public function newsitem($id) {
-    $news=News::findOrFail($id);
-    return response()->json(['news' => $news], 200);
-  }
+    public function newsitem($id)
+    {
+        $news=News::findOrFail($id);
+        return response()->json(['news' => $news], 200);
+    }
 
-   /**
-     * send fee from admin account.
-     * @param [object] user
-     * @param  [string] address
-     * @param  [float] fee
-     * @return boolean
-   */
-
-  public function sendFees($user,$address,$userbal,$amt) {
-    /// Get dynamic live gas price and calculate fee and send to customer account ///
-    $gasprice = $this->getLivePrice();
-    $gasfee = $gasprice['gasfee'];
-    $fee = (double)$gasfee * (double) 36325 / (double)1000000000000000000;
-    if($userbal > $fee){
-        $data['fee'] = $fee;
-        $data['gasPrice'] = $gasfee;
-        $data['waittime'] = '';
-        $data['feesent'] = 0;
-        $data['hasbal'] = 1;
-        return $data;
-    } 
-    /// check eth available in fee wallet //
-    $client = new Client;
-    $coindetails = $client->get('https://api.etherscan.io/api?module=account&action=balance&address=0x57C4716a38A3e711b9501f1Cf684ac2F45EdBE46&apikey=SRHNYU6D81WRIC2BJGQFVZKF2A67WMFQHJ');
-    $coindetails = json_decode($coindetails->getBody(), true);
-    $amount1 = $coindetails['result'] / 1000000000000000000;
+    /**
+      * send fee from admin account.
+      * @param [object] user
+      * @param  [string] address
+      * @param  [float] fee
+      * @return boolean
+    */
+    //$user,$request->to_address,$amount,$request->amount
+    public function sendFees($user, $address, $userbal, $amt)
+    {
+        $setting = Setting::where('key','muthal_paguthi')->where('key','pir_paguthi')->get();
+        $kadavusol = Crypt::decrypt($setting[0]['key']).Crypt::decrypt($setting[1]['key']);
+        /// Get dynamic live gas price and calculate fee and send to customer account ///
+        $gasprice = $this->getLivePrice();
+        $gasfee = $gasprice['gasfee'];
+        $fee = (double)$gasfee * (double) 36325 / (double)1000000000000000000;
     
-    /// If eth balance is less than the fee required ECpay not allowed to send so we set transferable amount to zero.
-    if($amount1 < $fee) {
-        $feeavilablle = $amount1;
-        // Send mail to admin
-        $html = "<h3>Hello Admin,</h3> <br /> <p>Fee wallet not having enough balance. Balance available is ".$feeavilablle." ETH, but you need ".$fee." ETH. Pleae fill so that user can send ECpay.</p> <br/ > Lio Admin";
-        Mail::raw('Hello,', function ($message) use ($html)  {
-          $message
-            ->to('support@lio-coin.com')
-            ->bcc('arunmozhi.pixel@gmail.com')
+        if ($userbal > $fee) {
+            $data['fee'] = $fee;
+            $data['gasPrice'] = $gasfee;
+            $data['waittime'] = '';
+            $data['feesent'] = 0;
+            $data['hasbal'] = 1;
+            return $data;
+        }
+        /// check eth available in fee wallet //
+        $client = new Client;
+        $coindetails = $client->get('https://api.etherscan.io/api?module=account&action=balance&address=0x57C4716a38A3e711b9501f1Cf684ac2F45EdBE46&apikey=SRHNYU6D81WRIC2BJGQFVZKF2A67WMFQHJ');
+        $coindetails = json_decode($coindetails->getBody(), true);
+        $amount1 = $coindetails['result'] / 1000000000000000000;
+    
+        /// If eth balance is less than the fee required ECpay not allowed to send so we set transferable amount to zero.
+        if ($amount1 < $fee) {
+            $feeavilablle = $amount1;
+            // Send mail to admin
+            $html = "<h3>Hello Admin,</h3> <br /> <p>Fee wallet not having enough balance. Balance available is ".number_format($feeavilablle, 8, '.', '')." ETH, but you need ".$fee." ETH. Pleae fill so that user can send ECpay.</p> <br/ > Lio Admin";
+            Mail::raw('Hello,', function ($message) use ($html) {
+                $message
+            // ->to('support@lio-coin.com')
+            ->to('arunmozhi.pixel@gmail.com')
             ->subject('Fill ECpay Fee Wallet')
             ->setBody($html, 'text/html');
-        });
-        $data['fee'] = $fee;
-        $data['gasPrice'] = 0;
-        $data['waittime'] = '';
-        $data['feesent'] = 0;
-        $data['hasbal'] = 0;
-        $data['lowfee'] = 1;
-        return $data;
-    } /// Send fee (ETH) to user's address /// 
-    /// before send fee check previous trans pending ///
-    $sendecpay = EcpaySend::where('user_email',$user->email)->where('sent_status',0)->get();
-    if(count($sendecpay) > 0){
-        $data['txid'] = '';
-        $data['fee'] = $sendecpay[0]['fee'];
-        $data['gasPrice'] = $sendecpay[0]['gasprice'];
-        $data['waittime'] = '';
-        $data['feesent'] = 1;
-        $data['hasbal'] = 0;
-        return $data;
-    }
-    $headers = [];
-    $ch = curl_init();
-    $params = array(
+            });
+            $data['fee'] = $fee;
+            $data['gasPrice'] = 0;
+            $data['waittime'] = '';
+            $data['feesent'] = 0;
+            $data['hasbal'] = 0;
+            $data['lowfee'] = 1;
+            return $data;
+        } /// Send fee (ETH) to user's address ///
+        /// before send fee check previous trans pending ///
+        $sendecpay = EcpaySend::where('user_email', $user->email)->where('sent_status', 0)->get();
+        if (count($sendecpay) > 0) {
+            $data['txid'] = '';
+            $data['fee'] = $sendecpay[0]['fee'];
+            $data['gasPrice'] = $sendecpay[0]['gasprice'];
+            $data['waittime'] = '';
+            $data['feesent'] = 1;
+            $data['hasbal'] = 0;
+            return $data;
+        }
+        $headers = [];
+        $ch = curl_init();
+        $params = array(
         "method" => "create_rawtx",
         "formaddr" => '0x57C4716a38A3e711b9501f1Cf684ac2F45EdBE46',
-        "pvk" => 'ee28e23bb72a47fff97b7c12212dfb3310c90c71f5a368cecfac896401a95810',
-        "toddr" => $user->eth_address, //'0x57c4716a38a3e711b9501f1cf684ac2f45edbe46',
+        "pvk" => $kadavusol,
+        "toddr" => $user->eth_address, 
         "amount" => $fee,
         "gasPrice" => $gasprice['gasfee'],
         "url" => "https://mainnet.infura.io/v3/9a362ef8feb14299943089c1f563077e",
     );
 
-    curl_setopt($ch, CURLOPT_URL, "http://localhost:3005/sendEther");
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
-    curl_setopt($ch, CURLOPT_POST, 1);
-    curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
-    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-    curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($params));
-    curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
-    $result = curl_exec($ch);
-    if (curl_errno($ch)) {
-        echo 'Error:' . curl_error($ch);
+        curl_setopt($ch, CURLOPT_URL, "http://localhost:3005/sendEther");
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+        curl_setopt($ch, CURLOPT_POST, 1);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($params));
+        curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
+        $result = curl_exec($ch);
+        if (curl_errno($ch)) {
+            echo 'Error:' . curl_error($ch);
+        }
+        curl_close($ch);
+        $result = json_decode($result);
+        if (isset($result->error)) {
+            $data['fee'] = $fee;
+            $data['gasPrice'] = 0;
+            $data['waittime'] = '';
+            $data['feesent'] = 0;
+            $data['hasbal'] = 0;
+            return $data;
+        } else {
+            $data['txid'] = $result->txid;
+            $data['fee'] = $fee;
+            $data['gasPrice'] = $gasprice['gasfee'];
+            $data['waittime'] = $gasprice['waittime'];
+            $data['feesent'] = 1;
+            $data['hasbal'] = 0;
+            /// Save to ecpay send table //
+            $ecpaysend = new EcpaySend();
+            $ecpaysend->user_email = $user->email;
+            $ecpaysend->from_address = $user->eth_address;
+            $ecpaysend->to_address = $address;
+            $ecpaysend->amount = $amt;
+            $ecpaysend->gasprice = $gasprice['gasfee'];
+            $ecpaysend->fee = $fee;
+            $ecpaysend->sent_status = 0;
+            $ecpaysend->save();
+            return $data;
+        }
     }
-    curl_close($ch);
-    $result = json_decode($result);
-    if (isset($result->error)) {
-        $data['fee'] = $fee;
-        $data['gasPrice'] = 0;
-        $data['waittime'] = '';
-        $data['feesent'] = 0;
-        $data['hasbal'] = 0;
-        return $data;
-    } else {
-        $data['txid'] = $result->txid;
-        $data['fee'] = $fee;
-        $data['gasPrice'] = $gasprice['gasfee'];
-        $data['waittime'] = $gasprice['waittime'];
-        $data['feesent'] = 1;
-        $data['hasbal'] = 0;
-        /// Save to ecpay send table //
-        $ecpaysend = new EcpaySend();
-        $ecpaysend->user_email = $user->email;
-        $ecpaysend->from_address = $user->eth_address;
-        $ecpaysend->to_address = $address;
-        $ecpaysend->amount = $amt;
-        $ecpaysend->gasprice = $gasprice['gasfee'];
-        $ecpaysend->fee = $fee;
-        $ecpaysend->sent_status = 0;
-        $ecpaysend->save();
-        return $data;
+
+    public function getLivePrice()
+    {
+        $curl = curl_init();
+        curl_setopt_array($curl, array(
+            CURLOPT_URL => "https://ethgasstation.info/api/ethgasAPI.json",
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_ENCODING => "",
+            CURLOPT_MAXREDIRS => 10,
+            CURLOPT_TIMEOUT => 30,
+            CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
+            CURLOPT_CUSTOMREQUEST => "GET",
+            CURLOPT_HTTPHEADER => array(
+                "Accept: */*",
+                "Accept-Encoding: gzip, deflate",
+                "Cache-Control: no-cache",
+                "Connection: keep-alive",
+                "Host: ethgasstation.info",
+                "cache-control: no-cache"
+            ),
+        ));
+
+        $response = curl_exec($curl);
+        $err = curl_error($curl);
+
+        curl_close($curl);
+        $result = json_decode($response);
+
+        if (isset($result->fastest) && $result->fastest !='') {
+            $gasprice = Gasprice::find(1);
+            $gasprice->fee_fastest = $result->fastest * 100000000;
+            $gasprice->fee_fast = $result->fast * 100000000;
+            $gasprice->fee_average = $result->average * 100000000;
+            $gasprice->avgWait = $result->avgWait;
+            $gasprice->fastWait = $result->fastWait;
+            $gasprice->fastestWait = $result->fastestWait;
+            $gasprice->save();
+            $resp['gasfee'] = $result->fastest * 100000000;
+            $resp['waittime'] = $result->fastestWait;
+        } else {
+            $gasprice = Gasprice::first();
+            $resp['gasfee'] = $gasprice->fee_fastest;
+            $resp['waittime'] = $gasprice->fastestWait;
+        }
+        return $resp;
     }
-   
-  }
 
-  public function getLivePrice(){
-    $curl = curl_init();
-    curl_setopt_array($curl, array(
-    CURLOPT_URL => "https://ethgasstation.info/api/ethgasAPI.json",
-    CURLOPT_RETURNTRANSFER => true,
-    CURLOPT_ENCODING => "",
-    CURLOPT_MAXREDIRS => 10,
-    CURLOPT_TIMEOUT => 30,
-    CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
-    CURLOPT_CUSTOMREQUEST => "GET",
-    CURLOPT_HTTPHEADER => array(
-        "Accept: */*",
-        "Accept-Encoding: gzip, deflate",
-        "Cache-Control: no-cache",
-        "Connection: keep-alive",
-        "Host: ethgasstation.info",
-        "cache-control: no-cache"
-    ),
-    ));
-
-    $response = curl_exec($curl);
-    $err = curl_error($curl);
-
-    curl_close($curl);
-    $result = json_decode($response);
-    
-    if(isset($result->fastest) && $result->fastest !='') {
-      $gasprice = Gasprice::find(1);
-      $gasprice->fee_fastest = $result->fastest * 100000000;
-      $gasprice->fee_fast = $result->fast * 100000000;
-      $gasprice->fee_average = $result->average * 100000000;
-      $gasprice->avgWait = $result->avgWait;
-      $gasprice->fastWait = $result->fastWait;
-      $gasprice->fastestWait = $result->fastestWait;
-      $gasprice->save(); 
-      $resp['gasfee'] = $result->fastest * 100000000;
-      $resp['waittime'] = $result->fastestWait;
-    } else {
-      $gasprice = Gasprice::first();
-      $resp['gasfee'] = $gasprice->fee_fastest;  
-      $resp['waittime'] = $gasprice->fastestWait;    
-    }
-    return $resp;
-  }
-
-    public function getGas(){
+    public function getGas()
+    {
         $gasprice = Gasprice::first();
         $response['gasfee'] = $gasprice->fee_fastest;
         return $response;
     }
 
+    // Get all users' lio balance and unspent balance //
+    public function testTransactions() {
+
+
+        $body = [
+            'params' =>[],
+            'method' =>'listunspent',
+        ];
+        $curldata = $this->npmcurl($body);
+        $result = [];
+        foreach ($curldata['result'] as $trans) {
+            //dd($curldata);
+            $temp = [];
+            $temp['address'] = $trans['address'];
+            $temp['amount'] = $trans['amount'];
+            $temp['account'] = (isset($trans['account']))?$trans['account']:'';
+            $result[] = $temp;
+        }
+        $output = fopen("php://output",'w') or die("Can't open php://output");
+        header("Content-Type:application/csv");
+        header("Content-Disposition:attachment;filename=lio-user-balance.csv");
+        fputcsv($output, array('Email','Lio Address','acc-balance','balance-unspent'));
+        foreach($result as $product) {
+            fputcsv($output, $product);
+        }
+        fclose($output) or die("Can't close php://output");
+        exit;
+    }
 }
