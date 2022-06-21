@@ -19,7 +19,7 @@
     "pragmarx/google2fa": "^3.0",
     "pragmarx/google2fa-laravel": "^0.2.0",
     "turbo124/laravel-push-notification": "dev-laravel5",
-    "guzzlehttp/guzzle": "6.3.*"
+    "guzzlehttp/guzzle": "6.5.*"
   },
   "require-dev": {
     "fzaninotto/faker": "~1.4",
